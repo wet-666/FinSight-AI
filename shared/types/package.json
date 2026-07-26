@@ -1,0 +1,47 @@
+{
+  "name": "@shared/types",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./common": {
+      "types": "./common.ts",
+      "default": "./common.ts"
+    },
+    "./database": {
+      "types": "./database.ts",
+      "default": "./database.ts"
+    },
+    "./dashboard": {
+      "types": "./dashboard.ts",
+      "default": "./dashboard.ts"
+    },
+    "./login": {
+      "types": "./login.ts",
+      "default": "./login.ts"
+    },
+    "./backtest": {
+      "types": "./backtest.ts",
+      "default": "./backtest.ts"
+    },
+    "./agent": {
+      "types": "./agent.ts",
+      "default": "./agent.ts"
+    },
+    "./report": {
+      "types": "./report.ts",
+      "default": "./report.ts"
+    },
+    "./trading": {
+      "types": "./trading.ts",
+      "default": "./trading.ts"
+    },
+    "./portfolio": {
+      "types": "./portfolio.ts",
+      "default": "./portfolio.ts"
+    },
+    "./notes": {
+      "types": "./notes.ts",
+      "default": "./notes.ts"
+    }
+  }
+}

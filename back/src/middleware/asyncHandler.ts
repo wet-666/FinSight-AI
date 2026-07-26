@@ -1,0 +1,11 @@
+/*捕获 async 路由中的异常，避免未处理 Promise 导致进程崩溃*/
+import { Request,Response,NextFunction,RequestHandler } from 'express'
+
+export function asyncHandler(
+   fn:(req:Request,res:Response,next:NextFunction) => Promise<void>
+):RequestHandler{
+   return (req, res, next) => {
+    Promise.resolve(fn(req, res, next)).catch(next);
+  };
+}
+

@@ -1,0 +1,29 @@
+@use './variable.scss' as *;
+@use './reset.scss';
+
+//滚动条外观设置
+::-webkit-scrollbar {
+    width: $scrollbar-width;
+    height: $scrollbar-width;
+}
+
+::-webkit-scrollbar-track {
+    background: $scrollbar-track-bg;
+    border-radius: $scrollbar-thumb-radius;
+}
+
+::-webkit-scrollbar-thumb {
+    width: $scrollbar-width;
+    background-color: $scrollbar-thumb-bg;
+    border-radius: $scrollbar-thumb-radius;
+    border: $scrollbar-thumb-border-width solid $scrollbar-thumb-border-color;
+    transition: background-color 0.2s ease;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background-color: $scrollbar-thumb-bg-hover;
+}
+
+::-webkit-scrollbar-thumb:active {
+    background-color: $scrollbar-thumb-bg-active;
+}

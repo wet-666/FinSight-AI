@@ -1,0 +1,25 @@
+{
+  "name": "finsight-ai",
+  "private": true,
+  "workspaces": [
+    "back",
+    "front",
+    "shared/types"
+  ],
+  "scripts": {
+    "dev:back": "npm run dev -w finsight-ai-serve",
+    "dev:front": "npm run dev -w finsight-ai",
+    "dev": "npm run dev:back & npm run dev:front",
+    "build:back": "npm run build -w finsight-ai-serve",
+    "build:front": "npm run build -w finsight-ai",
+    "type-check": "npm run type-check -w finsight-ai",
+    "type-check:back": "npm run build -w finsight-ai-serve --if-present"
+  },
+  "devDependencies": {
+    "@types/pdfkit": "^0.17.6",
+    "typescript": "~5.9.3"
+  },
+  "dependencies": {
+    "pdfkit": "^0.19.1"
+  }
+}

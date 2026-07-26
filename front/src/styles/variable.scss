@@ -1,0 +1,21 @@
+//项目提供scss全局变量
+//定义项目主题颜色
+$gold: #d0a86a;
+$gold-light: #e8c99a;
+$gold-dark: #b8924f;
+$text-primary: #2c2c2c;
+$text-secondary: #6b6b6b;
+$glass-bg: rgba(255, 255, 255, 0.72);
+$glass-border: rgba(255, 255, 255, 0.45);
+$up: #ef5350;
+$down: #26a69a;
+
+//滚动条变量
+$scrollbar-width: 10px;
+$scrollbar-track-bg: $glass-bg;
+$scrollbar-thumb-bg: $gold;
+$scrollbar-thumb-bg-hover: $gold-dark;
+$scrollbar-thumb-bg-active: $gold-light;
+$scrollbar-thumb-radius: 6px;
+$scrollbar-thumb-border-width: 2px;
+$scrollbar-thumb-border-color: transparent;

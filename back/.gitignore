@@ -1,0 +1,11 @@
+# 忽略 node_modules 目录
+node_modules/
+
+# 忽略 .env 文件
+.env
+
+#忽略日志文件
+*.log
+
+#忽略打包产物
+dist/
