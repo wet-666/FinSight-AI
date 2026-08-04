@@ -80,15 +80,35 @@ router.get('/sentiment-thermometer', authMiddleware, async (_req, res: Response)
   );
 });
 
-/** AI 新闻流 */
+/** AI 新闻流（含数据源 / 新鲜度标记） */
 router.get('/news-feed', authMiddleware, async (req: AuthRequest, res: Response) => {
-  const watchlist = await query<{ stock_code: string }[]>(
-    'SELECT stock_code FROM watchlist WHERE user_id = ?',
-    [req.userId!]
+  let codes: string[] | undefined;
+  try {
+    const watchlist = await query<{ stock_code: string }[]>(
+      'SELECT stock_code FROM watchlist WHERE user_id = ?',
+      [req.userId!]
+    );
+    codes = watchlist.map((w) => w.stock_code);
+  } catch (err) {
+    console.warn('[dashboard/news-feed] watchlist query failed:', err);
+  }
+
+  const feed = await getNewsFeed(codes && codes.length > 0 ? codes : undefined, 30);
+  res.json(
+    success({
+      items: feed.items,
+      source: feed.source,
+      sourceLabel:
+        feed.source === 'database'
+          ? '数据库'
+          : feed.source === 'eastmoney'
+            ? '东方财富'
+            : '样例数据',
+      stale: feed.stale,
+      freshnessHours: feed.freshnessHours,
+      message: feed.message || null,
+    })
   );
-  const codes = watchlist.map((w) => w.stock_code);
-  const news = await getNewsFeed(codes.length > 0 ? codes : undefined, 30);
-  res.json(success(news));
 });
 
 export default router;

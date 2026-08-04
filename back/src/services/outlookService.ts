@@ -105,7 +105,8 @@ export async function generateOutlook(
 1. 输出JSON，含 scenarios 数组3项（悲观/基准/乐观），每项含 label, probability, returnRange, description
 2. 含 summary 字段（100字内，强调不确定性）
 3. 不得使用"保证""一定涨"等措辞
-4. 仅输出JSON
+4. description/summary 使用纯中文，不要 Markdown（不要 **、*、#）
+5. 仅输出JSON
 
 格式：
 {{"scenarios":[...],"summary":"..."}}
@@ -152,11 +153,12 @@ export async function generateOutlook(
 }
 
 export async function getOutlookHistory(userId: number, limit = 10) {
+  const safeLimit = Math.min(Math.max(Number(limit) || 10, 1), 50);
   try {
     return await query(
       `SELECT id, stock_code, horizon_days, outlook, created_at
-       FROM ai_outlook_records WHERE user_id = ? ORDER BY created_at DESC LIMIT ?`,
-      [userId, limit]
+       FROM ai_outlook_records WHERE user_id = ? ORDER BY created_at DESC LIMIT ${safeLimit}`,
+      [userId]
     );
   } catch {
     return [];

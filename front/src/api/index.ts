@@ -26,6 +26,7 @@ export const authApi = {
   },
   updateProfile: (data: { nickname?: string; avatar?: string }) =>
     http.put('/auth/profile', data),
+  uploadAvatar: (dataUrl: string) => http.post('/auth/avatar', { dataUrl }),
   changePassword: (data: { oldPassword: string; newPassword: string }) =>
     http.put('/auth/password', data),
   getWatchlist: () => http.get('/auth/watchlist'),
@@ -46,6 +47,8 @@ export const stockApi = {
   getDetail: (code: string) => http.get(`/stock/${code}`),
   getChart: (code: string, days?: number) =>
     http.get(`/stock/${code}/chart`, { params: { days } }),
+  hot: () => http.get('/stock/meta/hot'),
+  search: (q: string) => http.get('/stock/meta/search', { params: { q } }),
   analyze: (code: string, stockName: string, exportReport = false) =>
     http.post(`/stock/${code}/analyze`, { stockName, exportReport }),
 };
@@ -66,8 +69,10 @@ export const notesApi = {
   get: (id: number) => http.get(`/notes/${id}`),
   create: (data: { stockCode: string; title: string; content: NoteContent }) =>
     http.post('/notes', data),
-  update: (id: number, data: { title: string; content: NoteContent }) =>
-    http.put(`/notes/${id}`, data),
+  update: (
+    id: number,
+    data: { title: string; content: NoteContent; stockCode?: string }
+  ) => http.put(`/notes/${id}`, data),
   remove: (id: number) => http.delete(`/notes/${id}`),
   getVariables: (stockCode: string) => http.get(`/notes/variables/${stockCode}`),
   aiAssist: (data: { action: string; text: string; stockCode?: string }) =>
@@ -106,6 +111,8 @@ export const agentsApi = {
     http.post('/agents/research', data),
   runs: () => http.get('/agents/runs'),
   runDetail: (id: number) => http.get(`/agents/runs/${id}`),
+  ask: (id: number, question: string) =>
+    http.post(`/agents/runs/${id}/ask`, { question }),
 };
 
 export const reportsApi = {
@@ -121,4 +128,9 @@ export const reportsApi = {
 export const portfolioApi = {
   diagnose: () => http.get('/portfolio/diagnose'),
   exportDiagnose: () => http.post('/portfolio/diagnose/export'),
+};
+
+export const riskApi = {
+  getProfile: () => http.get('/risk/profile'),
+  saveProfile: (answers: number[]) => http.post('/risk/profile', { answers }),
 };

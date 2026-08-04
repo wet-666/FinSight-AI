@@ -1,6 +1,4 @@
-import { PromptTemplate } from '@langchain/core/prompts';
-import { StringOutputParser } from '@langchain/core/output_parsers';
-import { getLLM, extractJson } from './llm';
+import { getLLM, invokeLLMJson } from './llm';
 import type { QuantAgentOutput, SentimentAgentOutput } from './types';
 
 export async function runQuantAgent(input: {
@@ -9,7 +7,7 @@ export async function runQuantAgent(input: {
   quote: { price: number; changePercent: number };
   kline: { date: string; close: number; high: number; low: number; ma20?: number }[];
   sentiment: SentimentAgentOutput;
-}): Promise<QuantAgentOutput> {
+}): Promise<QuantAgentOutput & { llmEnhanced: boolean }> {
   const { stockCode, stockName, quote, kline, sentiment } = input;
   const recent = kline.slice(-20);
   const last = recent[recent.length - 1];
@@ -43,7 +41,7 @@ export async function runQuantAgent(input: {
       ? Math.sqrt(returns.reduce((a, b) => a + b * b, 0) / returns.length) * Math.sqrt(252)
       : 0;
 
-  const base: QuantAgentOutput = {
+  const base: QuantAgentOutput & { llmEnhanced: boolean } = {
     priceTrend,
     lastClose,
     changePercent: quote.changePercent,
@@ -55,40 +53,25 @@ export async function runQuantAgent(input: {
       resistance: Math.round(resistance * 100) / 100,
     },
     narrative: `${stockName}近20日呈${priceTrend}，现价${lastClose}，${priceVsMa20}；舆情均分${sentiment.avgScore}（${sentiment.label}）。支撑约${support.toFixed(2)}，压力约${resistance.toFixed(2)}。`,
+    llmEnhanced: false,
   };
 
-  const llm = getLLM();
-  if (!llm) return base;
+  if (!getLLM()) return base;
 
-  const prompt = PromptTemplate.fromTemplate(`
-你是「量化研究员」Agent。结合行情与舆情输出 JSON：
-股票：{stockName}（{stockCode}）
-价格趋势：{priceTrend}，现价：{lastClose}，涨跌幅：{changePercent}%
-均线关系：{priceVsMa20}，波动：{volatilityHint}
-舆情：{sentimentLabel}/{avgScore}
-支撑/压力：{support}/{resistance}
-格式：{{ "narrative": "<100字技术与价情联动解读>" }}
-`);
+  const { data, usedLlm } = await invokeLLMJson<{ narrative: string }>({
+    system:
+      '你是量化研究员。只输出 JSON：{"narrative":"..."}。narrative 约100字，结合价量与舆情，禁止具体买卖点位。',
+    user: `股票：${stockName}（${stockCode}）
+趋势：${base.priceTrend} 现价：${base.lastClose} 涨跌幅：${base.changePercent}%
+均线：${base.priceVsMa20} 波动：${base.volatilityHint}
+舆情：${sentiment.label}/${sentiment.avgScore}
+支撑/压力：${base.keyLevels.support}/${base.keyLevels.resistance}`,
+    retries: 0,
+  });
 
-  try {
-    const chain = prompt.pipe(llm).pipe(new StringOutputParser());
-    const raw = await chain.invoke({
-      stockName,
-      stockCode,
-      priceTrend: base.priceTrend,
-      lastClose: base.lastClose,
-      changePercent: base.changePercent,
-      priceVsMa20: base.priceVsMa20,
-      volatilityHint: base.volatilityHint,
-      sentimentLabel: sentiment.label,
-      avgScore: sentiment.avgScore,
-      support: base.keyLevels.support,
-      resistance: base.keyLevels.resistance,
-    });
-    const parsed = extractJson<{ narrative: string }>(raw);
-    if (parsed?.narrative) base.narrative = parsed.narrative;
-  } catch {
-    /* keep */
+  if (data?.narrative) {
+    base.narrative = data.narrative;
+    base.llmEnhanced = usedLlm;
   }
   return base;
 }

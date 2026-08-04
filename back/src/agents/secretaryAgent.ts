@@ -1,20 +1,81 @@
-import { PromptTemplate } from '@langchain/core/prompts';
-import { StringOutputParser } from '@langchain/core/output_parsers';
-import { getLLM, extractJson } from './llm';
+import { getLLM, invokeLLMJson } from './llm';
+import { detectConflicts } from './conflictCheck';
 import {
   LEGAL_DISCLAIMER,
+  type Citation,
   type QuantAgentOutput,
   type SecretaryAgentOutput,
   type SentimentAgentOutput,
 } from './types';
+
+function buildEvidenceSummary(citations: Citation[], conflictsCount: number): string {
+  if (!citations.length) {
+    return `暂无检索证据；冲突点 ${conflictsCount} 项，结论主要来自量化规则。`;
+  }
+  const titles = citations
+    .slice(0, 3)
+    .map((c) => c.title)
+    .join('；');
+  return `共引用 ${citations.length} 条证据（如：${titles}）；规则冲突点 ${conflictsCount} 项。`;
+}
+
+function buildReport(params: {
+  stockCode: string;
+  stockName: string;
+  sentiment: SentimentAgentOutput;
+  quant: QuantAgentOutput;
+  risks: string[];
+  watchPoints: string[];
+  conflicts: SecretaryAgentOutput['conflicts'];
+  evidenceSummary: string;
+  citations: Citation[];
+}): string {
+  const { stockCode, stockName, sentiment, quant, risks, watchPoints, conflicts, evidenceSummary, citations } =
+    params;
+  const conflictBlock = conflicts.length
+    ? conflicts.map((c, i) => `${i + 1}. [${c.severity}] ${c.summary}`).join('\n')
+    : '未发现显著冲突。';
+  const citeBlock = citations.length
+    ? citations.map((c, i) => `[${i + 1}] ${c.title}（相关度 ${c.score}，${c.id}）\n    ${c.snippet}`).join('\n')
+    : '（无）';
+
+  return `【${stockName}（${stockCode}）多智能体投研备忘录】
+
+一、执行摘要
+${stockName}现价 ${quant.lastClose} 元（涨跌幅 ${quant.changePercent}%），近端趋势${quant.priceTrend}，${quant.priceVsMa20}。舆情均分 ${sentiment.avgScore}（${sentiment.label}）。
+证据摘要：${evidenceSummary}
+
+二、舆情分析师观点
+${sentiment.narrative}
+
+三、量化研究员观点
+${quant.narrative}
+
+四、冲突与风险
+${conflictBlock}
+风险：
+${risks.map((r, i) => `${i + 1}. ${r}`).join('\n')}
+观察：${watchPoints.join('；')}
+
+五、证据引用
+${citeBlock}
+
+六、结论
+建议将本备忘录用于学习与模拟决策流程演练，并结合自身风险测评结果控制仓位。
+
+${LEGAL_DISCLAIMER}`;
+}
 
 export async function runSecretaryAgent(input: {
   stockCode: string;
   stockName: string;
   sentiment: SentimentAgentOutput;
   quant: QuantAgentOutput;
-}): Promise<SecretaryAgentOutput> {
+}): Promise<SecretaryAgentOutput & { llmEnhanced: boolean }> {
   const { stockCode, stockName, sentiment, quant } = input;
+  const citations = sentiment.citations;
+  const conflicts = detectConflicts(sentiment, quant);
+  const evidenceSummary = buildEvidenceSummary(citations, conflicts.length);
 
   const risks = [
     '舆情与价格短期可能背离，勿单一依赖情绪信号',
@@ -27,73 +88,63 @@ export async function runSecretaryAgent(input: {
     `跟踪支撑 ${quant.keyLevels.support} / 压力 ${quant.keyLevels.resistance} 附近表现`,
   ];
 
-  const finalReport = `【${stockName}（${stockCode}）多智能体投研备忘录】
+  const finalReport = buildReport({
+    stockCode,
+    stockName,
+    sentiment,
+    quant,
+    risks,
+    watchPoints,
+    conflicts,
+    evidenceSummary,
+    citations,
+  });
 
-一、执行摘要
-${stockName}现价 ${quant.lastClose} 元（涨跌幅 ${quant.changePercent}%），近端趋势${quant.priceTrend}，${quant.priceVsMa20}。舆情均分 ${sentiment.avgScore}（${sentiment.label}）。
-
-二、舆情分析师观点
-${sentiment.narrative}
-
-三、量化研究员观点
-${quant.narrative}
-
-四、风险与观察点
-${risks.map((r, i) => `${i + 1}. ${r}`).join('\n')}
-观察：${watchPoints.join('；')}
-
-五、结论
-建议将本备忘录用于学习与模拟决策流程演练，并结合自身风险测评结果控制仓位。
-
-${LEGAL_DISCLAIMER}`;
-
-  const base: SecretaryAgentOutput = {
-    executiveSummary: `${stockName}趋势${quant.priceTrend}，舆情${sentiment.label}，波动${quant.volatilityHint}。`,
+  const base: SecretaryAgentOutput & { llmEnhanced: boolean } = {
+    executiveSummary: `${stockName}趋势${quant.priceTrend}，舆情${sentiment.label}，波动${quant.volatilityHint}。证据 ${citations.length} 条，冲突 ${conflicts.length} 项。`,
     risks,
     watchPoints,
     finalReport,
     disclaimer: LEGAL_DISCLAIMER,
+    citations,
+    conflicts,
+    evidenceSummary,
+    llmEnhanced: false,
   };
 
-  const llm = getLLM();
-  if (!llm) return base;
+  if (!getLLM()) return base;
 
-  const prompt = PromptTemplate.fromTemplate(`
-你是「投资秘书」Agent，负责整合前序 Agent 产出，生成结构化投研备忘录。
-输出 JSON：
-{{
-  "executiveSummary": "<40字摘要>",
-  "risks": ["风险1","风险2","风险3"],
-  "watchPoints": ["观察点1","观察点2","观察点3"],
-  "finalReport": "<300-500字完整备忘录，含章节，结尾必须保留免责声明>"
-}}
-股票：{stockName}（{stockCode}）
-舆情叙事：{sentimentNarrative}
-量化叙事：{quantNarrative}
-免责声明：{disclaimer}
-禁止给出具体买卖点位或收益承诺。
-`);
+  const { data, usedLlm } = await invokeLLMJson<{
+    executiveSummary?: string;
+    risks?: string[];
+    watchPoints?: string[];
+    finalReport?: string;
+    evidenceSummary?: string;
+  }>({
+    system: `你是投资秘书。只依据给定结构化事实与证据写备忘录，禁止编造未提供的新闻。只输出 JSON：
+{"executiveSummary":"<50字>","risks":["..."],"watchPoints":["..."],"evidenceSummary":"<40字>","finalReport":"<400字内备忘录，需包含冲突点与引用 id>"}
+禁止买卖点位或收益承诺。结尾保留免责声明。`,
+    user: `股票：${stockName}（${stockCode}）
+舆情叙事：${sentiment.narrative}
+量化叙事：${quant.narrative}
+冲突点：${JSON.stringify(conflicts)}
+证据：${JSON.stringify(citations.map((c) => ({ id: c.id, title: c.title, score: c.score })))}
+免责声明：${LEGAL_DISCLAIMER}`,
+    retries: 0,
+  });
 
-  try {
-    const chain = prompt.pipe(llm).pipe(new StringOutputParser());
-    const raw = await chain.invoke({
-      stockName,
-      stockCode,
-      sentimentNarrative: sentiment.narrative,
-      quantNarrative: quant.narrative,
-      disclaimer: LEGAL_DISCLAIMER,
-    });
-    const parsed = extractJson<Partial<SecretaryAgentOutput>>(raw);
-    if (parsed?.executiveSummary) base.executiveSummary = parsed.executiveSummary;
-    if (parsed?.risks?.length) base.risks = parsed.risks;
-    if (parsed?.watchPoints?.length) base.watchPoints = parsed.watchPoints;
-    if (parsed?.finalReport) {
-      base.finalReport = parsed.finalReport.includes('声明')
-        ? parsed.finalReport
-        : `${parsed.finalReport}\n\n${LEGAL_DISCLAIMER}`;
-    }
-  } catch {
-    /* keep demo */
+  if (data?.executiveSummary) base.executiveSummary = data.executiveSummary;
+  if (data?.risks?.length) base.risks = data.risks;
+  if (data?.watchPoints?.length) base.watchPoints = data.watchPoints;
+  if (data?.evidenceSummary) base.evidenceSummary = data.evidenceSummary;
+  if (data?.finalReport) {
+    base.finalReport = data.finalReport.includes('声明')
+      ? data.finalReport
+      : `${data.finalReport}\n\n${LEGAL_DISCLAIMER}`;
   }
+  // 引用与冲突始终以规则/检索结果为准，避免模型改写丢溯源
+  base.citations = citations;
+  base.conflicts = conflicts;
+  if (data) base.llmEnhanced = usedLlm;
   return base;
 }

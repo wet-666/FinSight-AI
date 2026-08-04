@@ -42,6 +42,10 @@
     "./notes": {
       "types": "./notes.ts",
       "default": "./notes.ts"
+    },
+    "./risk": {
+      "types": "./risk.ts",
+      "default": "./risk.ts"
     }
   }
 }

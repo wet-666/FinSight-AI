@@ -3,6 +3,9 @@ import { PromptTemplate } from '@langchain/core/prompts';
 import { StringOutputParser } from '@langchain/core/output_parsers';
 import { config } from '../config';
 import { query } from '../config/database';
+import { toDateStr } from '../utils/date';
+
+export { toDateStr };
 
 export interface SentimentResult {
   score: number;
@@ -12,11 +15,16 @@ export interface SentimentResult {
 
 function getLLM(): ChatOpenAI | null {
   if (!config.openai.apiKey) return null;
+  const model = config.openai.model;
+  const isThinkingFamily = /qwen3/i.test(model) && !/instruct/i.test(model);
   return new ChatOpenAI({
     openAIApiKey: config.openai.apiKey,
     configuration: { baseURL: config.openai.baseURL },
-    modelName: config.openai.model,
+    modelName: model,
     temperature: 0.3,
+    maxTokens: 800,
+    timeout: config.openai.timeoutMs,
+    ...(isThinkingFamily ? { modelKwargs: { enable_thinking: false } } : {}),
   });
 }
 
@@ -68,7 +76,7 @@ export async function analyzeNewsSentiment(
   return mockSentiment(title);
 }
 
-function mockSentiment(title: string): SentimentResult {
+export function mockSentiment(title: string): SentimentResult {
   const keywords = {
     positive: ['增长', '盈利', '突破', '利好', '上涨', '回购', '分红'],
     negative: ['下跌', '亏损', '风险', '调查', '减持', '暴雷', '违规'],
@@ -90,33 +98,36 @@ function mockSentiment(title: string): SentimentResult {
 
 /** 批量分析未处理新闻 */
 export async function batchAnalyzeNews(limit = 20): Promise<number> {
+  const safeLimit = Math.min(Math.max(Number(limit) || 20, 1), 100);
+  // mysql2 execute 对 LIMIT ? 在部分版本会 ER_WRONG_ARGUMENTS，故内联安全整数
   const newsList = await query<
-    { id: number; title: string; content: string; related_stocks: string }[]
+    { id: number; title: string; content: string; related_stocks: string | string[] | null }[]
   >(
     `SELECT n.id, n.title, n.content, n.related_stocks
      FROM news n
      LEFT JOIN news_sentiment ns ON n.id = ns.news_id
      WHERE ns.id IS NULL
-     LIMIT ?`,
-    [limit]
+     LIMIT ${safeLimit}`
   );
 
   let count = 0;
   for (const news of newsList) {
     let stocks: string[] = [];
-    try {
-      stocks = JSON.parse(news.related_stocks || '[]');
-    } catch {
-      stocks = [];
+    if (Array.isArray(news.related_stocks)) {
+      stocks = news.related_stocks.map(String);
+    } else if (typeof news.related_stocks === 'string') {
+      try {
+        const parsed = JSON.parse(news.related_stocks || '[]');
+        stocks = Array.isArray(parsed) ? parsed.map(String) : [];
+      } catch {
+        stocks = [];
+      }
     }
     if (stocks.length === 0) stocks = ['000001'];
 
     for (const code of stocks) {
-      const result = await analyzeNewsSentiment(
-        news.title,
-        news.content || news.title,
-        code
-      );
+      // 批量路径用关键词情绪，避免启动/登录时对几十条新闻逐条打 LLM（过慢且易失败）
+      const result = mockSentiment(news.title);
       await query(
         `INSERT INTO news_sentiment (news_id, stock_code, sentiment_score, sentiment_label, summary)
          VALUES (?, ?, ?, ?, ?)`,
@@ -170,16 +181,17 @@ export async function getStockSentimentHistory(
   stockCode: string,
   days = 30
 ): Promise<{ date: string; score: number }[]> {
-  const rows = await query<{ trade_date: string; avg_score: number }[]>(
+  const safeDays = Math.min(Math.max(Number(days) || 30, 1), 365);
+  const rows = await query<{ trade_date: string | Date; avg_score: number }[]>(
     `SELECT trade_date, avg_score FROM daily_sentiment
-     WHERE stock_code = ? AND trade_date >= DATE_SUB(CURDATE(), INTERVAL ? DAY)
+     WHERE stock_code = ? AND trade_date >= DATE_SUB(CURDATE(), INTERVAL ${safeDays} DAY)
      ORDER BY trade_date ASC`,
-    [stockCode, days]
+    [stockCode]
   );
 
   if (rows.length > 0) {
     return rows.map((r) => ({
-      date: String(r.trade_date).slice(0, 10),
+      date: toDateStr(r.trade_date),
       score: Number(r.avg_score),
     }));
   }
@@ -188,13 +200,13 @@ export async function getStockSentimentHistory(
   const result: { date: string; score: number }[] = [];
   const now = new Date();
   const seed = parseInt(stockCode.replace(/\D/g, '').slice(-3) || '1', 10);
-  for (let i = days - 1; i >= 0; i--) {
+  for (let i = safeDays - 1; i >= 0; i--) {
     const d = new Date(now);
     d.setDate(d.getDate() - i);
     if (d.getDay() === 0 || d.getDay() === 6) continue;
     const score =
       Math.round((Math.sin((i + seed) / 9) * 0.55 + Math.cos(i / 15) * 0.2) * 100) / 100;
-    result.push({ date: d.toISOString().slice(0, 10), score });
+    result.push({ date: toDateStr(d), score });
   }
   return result;
 }
@@ -203,29 +215,29 @@ export async function getStockSentimentHistory(
 export async function getMarketSentiment(days = 14): Promise<
   { date: string; score: number }[]
 > {
-  const rows = await query<{ trade_date: string; avg_score: number }[]>(
+  const safeDays = Math.min(Math.max(Number(days) || 14, 1), 365);
+  const rows = await query<{ trade_date: string | Date; avg_score: number }[]>(
     `SELECT trade_date, avg_score FROM market_sentiment
-     WHERE trade_date >= DATE_SUB(CURDATE(), INTERVAL ? DAY)
-     ORDER BY trade_date ASC`,
-    [days]
+     WHERE trade_date >= DATE_SUB(CURDATE(), INTERVAL ${safeDays} DAY)
+     ORDER BY trade_date ASC`
   );
 
   if (rows.length > 0) {
     return rows.map((r) => ({
-      date: String(r.trade_date).slice(0, 10),
+      date: toDateStr(r.trade_date),
       score: Number(r.avg_score),
     }));
   }
 
+  // 演示序列：相位偏移，避免「今天」刚好 sin(0)=0
   const result: { date: string; score: number }[] = [];
   const now = new Date();
-  for (let i = days - 1; i >= 0; i--) {
+  for (let i = safeDays - 1; i >= 0; i--) {
     const d = new Date(now);
     d.setDate(d.getDate() - i);
-    result.push({
-      date: d.toISOString().slice(0, 10),
-      score: Math.round(Math.sin(i / 7) * 0.35 * 100) / 100,
-    });
+    const score =
+      Math.round((Math.sin((i + 3) / 7) * 0.35 + Math.cos(i / 11) * 0.12) * 100) / 100;
+    result.push({ date: toDateStr(d), score });
   }
   return result;
 }
@@ -318,9 +330,8 @@ export async function generateBacktestSummary(params: {
   if (!llm) {
     return `策略回测完成：总收益率 ${(params.totalReturn * 100).toFixed(2)}%，超额 ${(
       (params.excessReturn || 0) * 100
-    ).toFixed(2)}%，最大回撤 ${(params.maxDrawdown * 100).toFixed(2)}%，夏普 ${
-      params.sharpeRatio ?? '-'
-    }，胜率 ${(params.winRate * 100).toFixed(1)}%。优点是规则清晰可解释；建议加入止损/仓位管理并延长样本外验证。`;
+    ).toFixed(2)}%，最大回撤 ${(params.maxDrawdown * 100).toFixed(2)}%，夏普 ${params.sharpeRatio ?? '-'
+      }，胜率 ${(params.winRate * 100).toFixed(1)}%。优点是规则清晰可解释；建议加入止损/仓位管理并延长样本外验证。`;
   }
 
   const prompt = PromptTemplate.fromTemplate(`
@@ -336,6 +347,7 @@ export async function generateBacktestSummary(params: {
 交易次数：{tradeCount}
 
 请指出策略优缺点并给出1-2条改进建议。勿承诺未来收益。
+请使用纯中文段落输出，不要使用 Markdown（不要用 **、*、#、- 列表符号）。
 `);
 
   try {
@@ -385,4 +397,3 @@ export async function aiWritingAssist(
   }
 }
 
-export { mockSentiment };

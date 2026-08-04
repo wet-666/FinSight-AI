@@ -1,6 +1,35 @@
 @use './variable.scss' as *;
 @use './reset.scss';
 
+// 锁定视口高度，避免出现页面级双滚动条
+html,
+body,
+#app {
+  height: 100%;
+  margin: 0;
+  font-family: 'PingFang SC', 'Microsoft YaHei', 'Noto Sans SC', 'Segoe UI', sans-serif;
+}
+
+// 各业务页统一内边距，并防止 flex 子项撑出横向滚动条
+.page-container {
+  box-sizing: border-box;
+  max-width: 100%;
+  padding: 16px 24px 24px;
+  overflow-x: hidden;
+}
+
+// TDesign 栅格负 margin 在窄屏下偶发横向溢出
+.page-container :deep(.t-row) {
+  max-width: 100%;
+}
+
+// A 股惯例：红涨绿跌
+.text-up {
+  color: $up !important;
+}
+.text-down {
+  color: $down !important;
+}
 //滚动条外观设置
 ::-webkit-scrollbar {
     width: $scrollbar-width;

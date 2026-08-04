@@ -15,9 +15,13 @@ export default defineConfig({
          '/api':{
            target:'http://localhost:3300',
            changeOrigin:true,
+         },
+         '/uploads':{
+           target:'http://localhost:3300',
+           changeOrigin:true,
          }
       }
-  },
+    },
   resolve: {
     alias: {
       '@': fileURLToPath(new URL('./src', import.meta.url)),

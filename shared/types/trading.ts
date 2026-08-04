@@ -4,10 +4,14 @@ export interface SimPosition {
   shares: number;
   avg_cost: number;
   currentPrice?: number;
+  prevClose?: number;
+  dayChange?: number;
+  dayChangePercent?: number;
   profit?: number;
   profitRate?: number;
   sort_order?: number;
   weight?: number;
+  priceSource?: string;
 }
 
 export interface SimAccount {
@@ -21,6 +25,10 @@ export interface PortfolioSnapshot {
   marketValue: number;
   totalReturn: number;
   totalReturnRate: number;
+  /** 持仓浮动盈亏合计（市值 - 成本） */
+  unrealizedPnl?: number;
+  /** 累计佣金（估算） */
+  feesPaid?: number;
   positions: SimPosition[];
 }
 

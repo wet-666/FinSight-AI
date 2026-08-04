@@ -15,9 +15,10 @@ const router = Router();
 router.post('/run', authMiddleware, async (req: AuthRequest, res: Response) => {
   const {
     stockCode,
-    sentimentThreshold = 0.5,
-    useMa20 = true,
-    initialCapital = 100000,
+    // 默认用相对便宜的 ETF，避免高价股 10 万买不起 1 手导致 0 成交
+    sentimentThreshold = 0.2,
+    useMa20 = false,
+    initialCapital = 200000,
     exportReport = false,
   } = req.body;
 

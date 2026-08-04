@@ -37,20 +37,57 @@ function calcSharpe(equityCurve: { value: number }[], riskFreeDaily = 0.00008): 
   return Math.round(dailySharpe * Math.sqrt(252) * 100) / 100;
 }
 
-/** 策略回测引擎：情绪阈值 + MA20，附带夏普/回撤/基准对比 */
+function buildDiagnostics(
+  days: DayData[],
+  config: BacktestConfig,
+  tradeCount: number
+): BacktestResult['diagnostics'] {
+  const scores = days.map((d) => d.sentiment).sort((a, b) => a - b);
+  const p40 = scores[Math.floor(scores.length * 0.4)] ?? 0;
+  let sentimentOnlyHits = 0;
+  let bothHits = 0;
+  for (const day of days) {
+    const sOk = day.sentiment >= config.sentimentThreshold;
+    const mOk = config.useMa20 ? day.close < day.ma20 : true;
+    if (sOk) sentimentOnlyHits++;
+    if (sOk && mOk) bothHits++;
+  }
+
+  let reasonIfEmpty = '';
+  if (tradeCount === 0) {
+    if (sentimentOnlyHits === 0) {
+      reasonIfEmpty = `情绪从未达到阈值 ${config.sentimentThreshold}。建议降至约 ${Math.round(p40 * 10) / 10}，或关闭 MA20 过滤。`;
+    } else if (bothHits === 0 && config.useMa20) {
+      reasonIfEmpty = `有 ${sentimentOnlyHits} 天情绪达标，但同时「价格低于 MA20」条件从未满足。可关闭 MA20 或降低阈值。`;
+    } else {
+      reasonIfEmpty = '信号日资金不足以买入 100 股整数手，或价格过高。可增大初始资金。';
+    }
+  }
+
+  return {
+    daysAnalyzed: days.length,
+    daysSentimentOk: sentimentOnlyHits,
+    daysBuySignal: bothHits,
+    suggestedThreshold: Math.round(p40 * 100) / 100,
+    reasonIfEmpty,
+  };
+}
+
+/** 策略回测引擎：情绪阈值 + MA20，附带夏普/回撤/基准对比与 0 成交诊断 */
 export function runBacktest(
   kline: { date: string; close: number; ma20?: number }[],
   sentiment: { date: string; score: number }[],
   config: BacktestConfig,
   benchmark?: { date: string; close: number }[]
 ): BacktestResult {
-  const sentimentMap = new Map(sentiment.map((s) => [s.date, s.score]));
+  const normDate = (d: string) => (d.length >= 10 ? d.slice(0, 10) : d);
+  const sentimentMap = new Map(sentiment.map((s) => [normDate(s.date), s.score]));
   const closes = kline.map((k) => k.close);
 
   const days: DayData[] = kline.map((k, i) => ({
-    date: k.date,
+    date: normDate(k.date),
     close: k.close,
-    sentiment: sentimentMap.get(k.date) ?? 0,
+    sentiment: sentimentMap.get(normDate(k.date)) ?? 0,
     ma20: k.ma20 ?? calcMA20(closes, i),
   }));
 
@@ -141,7 +178,6 @@ export function runBacktest(
       ? Math.round((tradedNotional / config.initialCapital) * 100) / 100
       : 0;
 
-  // 买入持有基准（同标的）或外部基准
   const benchSource =
     benchmark && benchmark.length >= 2
       ? benchmark
@@ -149,11 +185,11 @@ export function runBacktest(
   const firstClose = benchSource[0]?.close || 1;
   const benchmarkCurve = benchSource.map((b) => ({
     date: b.date,
-    value:
-      Math.round((config.initialCapital * (b.close / firstClose)) * 100) / 100,
+    value: Math.round(config.initialCapital * (b.close / firstClose) * 100) / 100,
   }));
   const lastBench = benchmarkCurve[benchmarkCurve.length - 1]?.value || config.initialCapital;
   const benchmarkReturn = (lastBench - config.initialCapital) / config.initialCapital;
+  const tradeCount = trades.filter((t) => t.type === 'buy').length;
 
   return {
     trades,
@@ -165,9 +201,10 @@ export function runBacktest(
     maxDrawdown: Math.round(maxDrawdown * 10000) / 10000,
     sharpeRatio: calcSharpe(equityCurve),
     winRate: Math.round(winRate * 10000) / 10000,
-    tradeCount: trades.filter((t) => t.type === 'buy').length,
+    tradeCount,
     turnover,
     finalValue: Math.round(finalValue * 100) / 100,
+    diagnostics: buildDiagnostics(days, config, tradeCount),
   };
 }
 

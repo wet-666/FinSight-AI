@@ -11,7 +11,7 @@ CREATE TABLE IF NOT EXISTS users (
   email VARCHAR(100) NOT NULL UNIQUE,
   password_hash VARCHAR(255) NOT NULL,
   nickname VARCHAR(50) DEFAULT '',
-  avatar VARCHAR(500) DEFAULT '',
+  avatar TEXT NULL COMMENT '头像路径 /uploads/avatars/... 或外链',
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
@@ -189,7 +189,7 @@ CREATE TABLE IF NOT EXISTS agent_runs (
   status ENUM('running','completed','failed') NOT NULL DEFAULT 'running',
   stages JSON NOT NULL,
   final_report TEXT,
-  mode ENUM('llm','demo') NOT NULL DEFAULT 'demo',
+  mode ENUM('llm','demo','llm_fallback') NOT NULL DEFAULT 'demo',
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   finished_at TIMESTAMP NULL,
   FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,

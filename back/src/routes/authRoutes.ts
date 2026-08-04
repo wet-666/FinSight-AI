@@ -2,10 +2,13 @@
 import { Router, Response, Request } from 'express'
 import bcrypt from 'bcryptjs'
 import jwt from 'jsonwebtoken'
+import fs from 'fs'
+import path from 'path'
 import { query } from '../config/database.js'
 import { config } from '../config/index.js'
 import { asyncHandler } from '../middleware/asyncHandler.js'
 import { authMiddleware, AuthRequest, success, error } from '../middleware/auth.js'
+import { ensureUsersSchema, AVATAR_DIR } from '../agents/ensureUsers.js'
 import type { UserRow } from '@shared/types/database'
 
 const router = Router()
@@ -15,11 +18,28 @@ interface UserRowWithPasswordHash extends UserRow {}
 router.post(
    '/register',
    asyncHandler(async (req: Request, res: Response) => {
-      const { username, email, password, nickname } = req.body
+      const username = String(req.body?.username || '').trim()
+      const email = String(req.body?.email || '').trim()
+      const password = String(req.body?.password || '')
+      const nickname = String(req.body?.nickname || '').trim()
+
       if (!username || !email || !password) {
          res.status(400).json(error('用户名、邮箱、密码不能为空！'))
          return
       }
+      if (!/^[a-zA-Z0-9_]{3,20}$/.test(username)) {
+         res.status(400).json(error('用户名需为 3-20 位字母/数字/下划线'))
+         return
+      }
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+         res.status(400).json(error('邮箱格式不正确'))
+         return
+      }
+      if (!/^(?=.*[A-Za-z])(?=.*\d).{6,20}$/.test(password)) {
+         res.status(400).json(error('密码需 6-20 位，且同时包含字母和数字'))
+         return
+      }
+
       const existing = await query<UserRow[]>(
          `SELECT * FROM users WHERE username = ? OR email = ?`,
          [username, email]
@@ -50,13 +70,13 @@ router.post(
 router.post(
    '/login',
    asyncHandler(async (req, res) => {
-      const { username, password } = req.body
+      const username = String(req.body?.username || '').trim()
+      const password = String(req.body?.password || '')
       if (!username || !password) {
          res.status(400).json(error('用户名和密码不能为空'))
          return
       }
 
-      //查询用户是否存在
       const users = await query<UserRowWithPasswordHash[]>(
          'SELECT * FROM users WHERE username = ? OR email = ?',
          [username, username]
@@ -67,14 +87,12 @@ router.post(
       }
 
       const user = users[0]
-      //验证密码
       const valid = await bcrypt.compare(password, user.password_hash)
       if (!valid) {
          res.status(401).json(error('用户名或密码错误', 401))
          return
       }
 
-      //生成 token 并返回
       const token = jwt.sign({ userId: user.id }, config.jwt.secret, {
          expiresIn: config.jwt.expiresIn as jwt.SignOptions['expiresIn'],
       })
@@ -120,13 +138,82 @@ router.put(
    '/profile',
    authMiddleware,
    asyncHandler(async (req: AuthRequest, res: Response) => {
-      const { nickname, avatar } = req.body;
-      await query('UPDATE users SET nickname = ?, avatar = ? WHERE id = ?', [
-         nickname,
-         avatar,
-         req.userId!,
-      ]);
-      res.json(success(null, '个人信息已更新'));
+      await ensureUsersSchema();
+      const nickname = req.body?.nickname != null ? String(req.body.nickname).trim() : undefined;
+      const avatar = req.body?.avatar != null ? String(req.body.avatar).trim() : undefined;
+      if (nickname === undefined && avatar === undefined) {
+         res.status(400).json(error('没有可更新的字段'));
+         return;
+      }
+      if (nickname !== undefined && avatar !== undefined) {
+         await query('UPDATE users SET nickname = ?, avatar = ? WHERE id = ?', [
+            nickname,
+            avatar,
+            req.userId!,
+         ]);
+      } else if (nickname !== undefined) {
+         await query('UPDATE users SET nickname = ? WHERE id = ?', [nickname, req.userId!]);
+      } else {
+         await query('UPDATE users SET avatar = ? WHERE id = ?', [avatar, req.userId!]);
+      }
+      const users = await query<UserRowWithPasswordHash[]>(
+         'SELECT id, username, email, nickname, avatar FROM users WHERE id = ?',
+         [req.userId!]
+      );
+      res.json(success(users[0] || null, '个人信息已更新'));
+   })
+)
+
+/** 上传本地头像：接收 base64 data URL，写入文件并把路径存入 users.avatar */
+router.post(
+   '/avatar',
+   authMiddleware,
+   asyncHandler(async (req: AuthRequest, res: Response) => {
+      await ensureUsersSchema();
+      const dataUrl = String(req.body?.dataUrl || '');
+      const match = dataUrl.match(/^data:(image\/(png|jpeg|jpg|webp|gif));base64,([A-Za-z0-9+/=]+)$/i);
+      if (!match) {
+         res.status(400).json(error('请上传 png/jpg/webp/gif 图片'));
+         return;
+      }
+      const mime = match[1].toLowerCase();
+      const ext = mime.includes('png')
+         ? 'png'
+         : mime.includes('webp')
+           ? 'webp'
+           : mime.includes('gif')
+             ? 'gif'
+             : 'jpg';
+      const buf = Buffer.from(match[3], 'base64');
+      if (buf.length > 800 * 1024) {
+         res.status(400).json(error('头像不能超过 800KB，请压缩后再传'));
+         return;
+      }
+
+      fs.mkdirSync(AVATAR_DIR, { recursive: true });
+      const filename = `u${req.userId}_${Date.now()}.${ext}`;
+      const abs = path.join(AVATAR_DIR, filename);
+      fs.writeFileSync(abs, buf);
+
+      // 清理该用户旧头像文件（仅 storage/avatars 下）
+      try {
+         const prev = await query<{ avatar: string }[]>(
+            'SELECT avatar FROM users WHERE id = ?',
+            [req.userId!]
+         );
+         const old = prev[0]?.avatar || '';
+         const oldName = old.match(/\/uploads\/avatars\/(u\d+_[^/]+)$/)?.[1];
+         if (oldName) {
+            const oldAbs = path.join(AVATAR_DIR, oldName);
+            if (fs.existsSync(oldAbs)) fs.unlinkSync(oldAbs);
+         }
+      } catch {
+         /* ignore */
+      }
+
+      const avatarUrl = `/uploads/avatars/${filename}`;
+      await query('UPDATE users SET avatar = ? WHERE id = ?', [avatarUrl, req.userId!]);
+      res.json(success({ avatar: avatarUrl }, '头像已更新'));
    })
 )
 
@@ -136,6 +223,14 @@ router.put(
    authMiddleware,
    asyncHandler(async (req: AuthRequest, res: Response) => {
       const { oldPassword, newPassword } = req.body;
+      if (!oldPassword || !newPassword) {
+         res.status(400).json(error('原密码和新密码不能为空'));
+         return;
+      }
+      if (oldPassword === newPassword) {
+         res.status(400).json(error('新密码不能与原密码相同'));
+         return;
+      }
       const users = await query<UserRowWithPasswordHash[]>(
          'SELECT password_hash FROM users WHERE id = ?',
          [req.userId!]

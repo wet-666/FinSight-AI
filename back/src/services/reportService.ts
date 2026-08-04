@@ -77,11 +77,34 @@ export function markdownToHtml(markdown: string, title: string): string {
 </html>`;
 }
 
+function applyCjkFont(doc: InstanceType<typeof PDFDocument>): void {
+  // 优先单字体 TTF（PDFKit 对 TTC 集合字体支持不稳定）
+  const candidates = [
+    path.join(process.cwd(), 'assets', 'fonts', 'NotoSansSC-Regular.otf'),
+    path.join(process.cwd(), 'assets', 'fonts', 'simhei.ttf'),
+    'C:\\Windows\\Fonts\\simhei.ttf',
+    'C:\\Windows\\Fonts\\msyh.ttc',
+    '/System/Library/Fonts/PingFang.ttc',
+    '/usr/share/fonts/truetype/wqy/wqy-microhei.ttc',
+  ];
+  for (const fontPath of candidates) {
+    if (!fs.existsSync(fontPath)) continue;
+    try {
+      doc.registerFont('CJK', fontPath);
+      doc.font('CJK');
+      return;
+    } catch {
+      /* try next */
+    }
+  }
+}
+
 async function writePdf(filePath: string, payload: ReportPayload, markdown: string): Promise<void> {
   await new Promise<void>((resolve, reject) => {
     const doc = new PDFDocument({ margin: 50 });
     const stream = fs.createWriteStream(filePath);
     doc.pipe(stream);
+    applyCjkFont(doc);
     doc.fontSize(18).text(payload.title, { underline: true });
     doc.moveDown();
     doc.fontSize(10).fillColor('#666').text(`生成时间：${new Date().toLocaleString('zh-CN')}`);

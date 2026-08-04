@@ -3,9 +3,9 @@ import { MessagePlugin } from 'tdesign-vue-next';
 import type { ApiResponse } from '@shared/types/common';
 
 const http = axios.create({
-  // 走 Vite 代理，避免硬编码端口；也可直连 http://localhost:3300/api
   baseURL: '/api',
-  timeout: 50000,
+  // AI 三 Agent 编排可能超过 1 分钟，需高于模型超时
+  timeout: 180_000,
 });
 
 http.interceptors.request.use((config) => {
@@ -45,7 +45,11 @@ http.interceptors.response.use(
         MessagePlugin.error('服务器开小差了，请稍后重试');
         break;
       default:
-        MessagePlugin.error(err.response?.data?.message || err.message || '请求失败');
+        if (err.code === 'ECONNABORTED') {
+          MessagePlugin.error('请求超时：AI 分析较慢，请稍后重试或检查模型配置');
+        } else {
+          MessagePlugin.error(err.response?.data?.message || err.message || '请求失败');
+        }
     }
     return Promise.reject(err);
   }

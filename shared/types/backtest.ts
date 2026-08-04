@@ -13,6 +13,14 @@ export interface BacktestTrade {
   reason: string;
 }
 
+export interface BacktestDiagnostics {
+  daysAnalyzed: number;
+  daysSentimentOk: number;
+  daysBuySignal: number;
+  suggestedThreshold: number;
+  reasonIfEmpty: string;
+}
+
 export interface BacktestResult {
   trades: BacktestTrade[];
   equityCurve: { date: string; value: number }[];
@@ -26,6 +34,7 @@ export interface BacktestResult {
   tradeCount: number;
   turnover: number;
   finalValue: number;
+  diagnostics?: BacktestDiagnostics;
 }
 
 /** 接口返回（含 AI 点评等扩展字段） */

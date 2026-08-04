@@ -1,19 +1,27 @@
 import type {
   AgentRole,
   AgentStage,
-  SentimentAgentOutput,
+  Citation,
+  ConflictPoint,
+  FollowupAskResult,
   QuantAgentOutput,
-  SecretaryAgentOutput,
   OrchestratorResult,
+  RetrievalMode,
+  SecretaryAgentOutput,
+  SentimentAgentOutput,
 } from '@shared/types/agent';
 
 export type {
   AgentRole,
   AgentStage,
-  SentimentAgentOutput,
+  Citation,
+  ConflictPoint,
+  FollowupAskResult,
   QuantAgentOutput,
-  SecretaryAgentOutput,
   OrchestratorResult,
+  RetrievalMode,
+  SecretaryAgentOutput,
+  SentimentAgentOutput,
 };
 
 export const LEGAL_DISCLAIMER =

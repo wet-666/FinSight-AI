@@ -65,26 +65,33 @@ function renderCharts() {
   if (pieRef.value) {
     if (!pieChart) pieChart = echarts.init(pieRef.value);
     pieChart.setOption({
+      textStyle: { fontFamily: 'Microsoft YaHei, PingFang SC, Noto Sans SC, sans-serif' },
       title: { text: '行业权重', left: 0, textStyle: { fontSize: 14 } },
       tooltip: { trigger: 'item' },
       series: [
         {
           type: 'pie',
-          radius: ['35%', '65%'],
+          radius: ['35%', '58%'],
+          center: ['50%', '55%'],
           data: (data.value.industryWeights || []).map((i) => ({
             name: i.industry,
             value: i.weight,
           })),
+          label: { fontSize: 12 },
         },
       ],
-    });
+    }, true);
   }
   if (radarRef.value && data.value.radar) {
     if (!radarChart) radarChart = echarts.init(radarRef.value);
     const r = data.value.radar;
     radarChart.setOption({
+      textStyle: { fontFamily: 'Microsoft YaHei, PingFang SC, Noto Sans SC, sans-serif' },
       title: { text: '风险雷达', left: 0, textStyle: { fontSize: 14 } },
       radar: {
+        center: ['50%', '55%'],
+        radius: '58%',
+        nameGap: 10,
         indicator: [
           { name: '集中度', max: 100 },
           { name: '分散度', max: 100 },
@@ -103,7 +110,7 @@ function renderCharts() {
           ],
         },
       ],
-    });
+    }, true);
   }
 }
 

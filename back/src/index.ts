@@ -1,6 +1,8 @@
-import express from 'express';
+﻿import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
+import path from 'path';
+import { fileURLToPath } from 'url';
 import { config } from './config';
 import { testDatabaseConnection } from './config/database';
 import authRoutes from './routes/authRoutes';
@@ -14,32 +16,36 @@ import outlookRoutes from './routes/outlook';
 import agentsRoutes from './routes/agents';
 import reportsRoutes from './routes/reports';
 import portfolioRoutes from './routes/portfolio';
+import riskRoutes from './routes/risk';
 import { startSentimentCron } from './jobs/sentimentCron';
 import { startCleanupCron } from './jobs/cleanupCron';
 import { handleRouteError } from './middleware/auth';
 import { probeMarketSource } from './services/marketService';
+import { probeLLM } from './agents/llm';
+import { ensureUsersSchema, STORAGE_ROOT } from './agents/ensureUsers';
 
 dotenv.config();
 
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
 
 app.use(cors());
-app.use(express.json({ limit: '10mb' }));
+app.use(express.json({ limit: '2mb' }));
+app.use('/uploads', express.static(STORAGE_ROOT));
+app.use('/uploads', express.static(path.resolve(__dirname, '../storage')));
 
 app.get('/api/health', async (_req, res) => {
   const db = await testDatabaseConnection();
   const market = await probeMarketSource();
-  const llm = Boolean(config.openai.apiKey);
+  const llm = await probeLLM();
   const ok = db.ok;
   res.status(ok ? 200 : 503).json({
     status: ok ? 'ok' : 'degraded',
     service: 'finsight-ai',
+    version: '1.1',
     database: db,
     market,
-    llm: {
-      ok: llm,
-      message: llm ? `LLM 已配置（${config.openai.model}）` : '未配置 OPENAI_API_KEY，Agent 将走 demo 模式',
-    },
+    llm,
   });
 });
 
@@ -54,6 +60,7 @@ app.use('/api/outlook', outlookRoutes);
 app.use('/api/agents', agentsRoutes);
 app.use('/api/reports', reportsRoutes);
 app.use('/api/portfolio', portfolioRoutes);
+app.use('/api/risk', riskRoutes);
 
 app.use(
   (
@@ -71,10 +78,13 @@ app.listen(config.port, async () => {
   const db = await testDatabaseConnection();
   if (db.ok) {
     console.log('✅', db.message);
+    await ensureUsersSchema();
   } else {
     console.error('❌', db.message);
-    console.error('   请修改 back/.env 中的数据库配置，并执行 sql/schema.sql');
+    console.error('   请修改 back/.env 中的数据库配置，并执行 sql/database.sql');
   }
+  const llm = await probeLLM();
+  console.log(llm.ok ? '✅' : '⚠️', llm.message);
   startSentimentCron();
   startCleanupCron();
 });

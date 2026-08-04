@@ -2,7 +2,15 @@
   <div class="page-container">
     <LegalDisclaimer />
 
-    <t-card title="投资风险测评" subtitle="了解您的风险偏好，获得更合适的模拟策略建议" :bordered="false">
+    <t-card title="投资风险测评" subtitle="结果会写入账户，并约束模拟交易单票仓位、推荐回测参数" :bordered="false">
+      <t-alert
+        v-if="savedProfile && !finished"
+        theme="info"
+        :close="false"
+        style="margin-bottom: 16px"
+        :message="`当前档案：${savedProfile.levelLabel}（得分 ${savedProfile.score}）。单票上限 ${(savedProfile.maxPositionWeight * 100).toFixed(0)}%。可重新测评覆盖。`"
+      />
+
       <div v-if="!finished">
         <h3 class="q-title">{{ questions[step].title }}</h3>
         <t-radio-group v-model="answers[step]" class="q-options">
@@ -12,18 +20,31 @@
         </t-radio-group>
         <div class="q-actions">
           <t-button v-if="step > 0" variant="outline" @click="step--">上一题</t-button>
-          <t-button theme="primary" @click="next">{{ step < questions.length - 1 ? '下一题' : '查看结果' }}</t-button>
+          <t-button theme="primary" :loading="saving" @click="next">
+            {{ step < questions.length - 1 ? '下一题' : '保存结果' }}
+          </t-button>
         </div>
       </div>
 
       <div v-else class="result">
-        <t-result
-          :theme="resultTheme"
-          :title="resultTitle"
-          :description="resultDesc"
+        <t-result :theme="resultTheme" :title="resultTitle" :description="resultDesc" />
+        <t-alert
+          v-if="savedProfile"
+          theme="success"
+          :close="false"
+          style="margin: 16px auto; max-width: 520px; text-align: left"
+          :message="savedProfile.hint"
         />
+        <ul v-if="savedProfile" class="result-bullets">
+          <li>单票仓位上限：总资产的 {{ (savedProfile.maxPositionWeight * 100).toFixed(0) }}%</li>
+          <li>
+            回测推荐：情绪阈值 {{ savedProfile.backtestDefaults.sentimentThreshold }}，MA20
+            {{ savedProfile.backtestDefaults.useMa20 ? '开启' : '关闭' }}
+          </li>
+        </ul>
         <t-space style="margin-top: 16px">
           <t-button theme="primary" @click="$router.push('/sim-trading')">进入模拟投资</t-button>
+          <t-button variant="outline" @click="$router.push('/backtest')">去策略回测</t-button>
           <t-button variant="outline" @click="restart">重新测评</t-button>
         </t-space>
       </div>
@@ -32,12 +53,17 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue';
+import { ref, computed, onMounted } from 'vue';
+import { MessagePlugin } from 'tdesign-vue-next';
 import LegalDisclaimer from '@/components/LegalDisclaimer.vue';
+import { riskApi } from '@/api';
+import type { RiskProfile } from '@shared/types/risk';
 
 const step = ref(0);
 const finished = ref(false);
+const saving = ref(false);
 const answers = ref<number[]>([]);
+const savedProfile = ref<RiskProfile | null>(null);
 
 const questions = [
   {
@@ -82,35 +108,51 @@ const questions = [
   },
 ];
 
-const totalScore = computed(() => answers.value.reduce((a, b) => a + b, 0));
-
-const resultTitle = computed(() => {
-  const s = totalScore.value;
-  if (s <= 8) return '保守型投资者';
-  if (s <= 12) return '稳健型投资者';
-  return '积极型投资者';
-});
+const resultTitle = computed(() =>
+  savedProfile.value ? `${savedProfile.value.levelLabel}投资者` : '测评完成'
+);
 
 const resultDesc = computed(() => {
-  const s = totalScore.value;
-  if (s <= 8) return '建议模拟体验以大盘蓝筹为主，关注低波动策略，AI展望仅供参考。';
-  if (s <= 12) return '适合均衡配置模拟组合，可结合舆情与回测功能学习投资逻辑。';
-  return '可尝试更多策略回测与模拟交易，但仍需注意风险控制，切勿将模拟结果等同于实盘。';
+  if (!savedProfile.value) return '';
+  return `得分 ${savedProfile.value.score}。结果已保存到账户，将作用于模拟交易仓位上限与回测推荐参数。`;
 });
 
 const resultTheme = computed(() => {
-  const s = totalScore.value;
-  if (s <= 8) return 'success';
-  if (s <= 12) return 'primary';
+  const level = savedProfile.value?.level;
+  if (level === 'conservative') return 'success';
+  if (level === 'moderate') return 'primary';
   return 'warning';
 });
 
-function next() {
-  if (answers.value[step.value] === undefined) return;
+async function loadProfile() {
+  try {
+    const res = await riskApi.getProfile();
+    savedProfile.value = (res.data as RiskProfile | null) || null;
+  } catch {
+    savedProfile.value = null;
+  }
+}
+
+async function next() {
+  if (answers.value[step.value] === undefined) {
+    MessagePlugin.warning('请先选择一项');
+    return;
+  }
   if (step.value < questions.length - 1) {
     step.value++;
-  } else {
+    return;
+  }
+
+  saving.value = true;
+  try {
+    const res = await riskApi.saveProfile(answers.value.slice(0, questions.length));
+    savedProfile.value = res.data as RiskProfile;
     finished.value = true;
+    MessagePlugin.success('风险测评已保存');
+  } catch {
+    // interceptor
+  } finally {
+    saving.value = false;
   }
 }
 
@@ -119,6 +161,8 @@ function restart() {
   finished.value = false;
   answers.value = [];
 }
+
+onMounted(loadProfile);
 </script>
 
 <style scoped>
@@ -142,5 +186,14 @@ function restart() {
 .result {
   text-align: center;
   padding: 24px 0;
+}
+
+.result-bullets {
+  display: inline-block;
+  text-align: left;
+  margin: 8px 0 0;
+  color: #666;
+  font-size: 14px;
+  line-height: 1.8;
 }
 </style>

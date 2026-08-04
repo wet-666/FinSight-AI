@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
-import { MessagePlugin } from 'tdesign-vue-next';
-import { DesktopIcon, LockOnIcon, LoginIcon, RefreshIcon, UserAddIcon, ArrowLeftIcon } from 'tdesign-icons-vue-next';
-import type { FormProps, FormRules, DialogProps } from 'tdesign-vue-next';
+import { ref, computed, watch } from 'vue'
+import { MessagePlugin } from 'tdesign-vue-next'
+import { DesktopIcon, LockOnIcon, LoginIcon, RefreshIcon, UserAddIcon } from 'tdesign-icons-vue-next'
+import type { FormProps, FormRules, DialogProps } from 'tdesign-vue-next'
 
 import LoginBackground from '@/components/LoginBackground.vue'
 import LoginLeftPanel from '@/components/LoginLeftPanel.vue'
@@ -22,7 +22,7 @@ type FormValidateResult = boolean | Record<string, { message: string; result: bo
 
 const userStore = useUserStore()
 const router = useRouter()
-const isRegister = ref(true)
+const isRegister = ref(false)
 const isloading = ref(false)
 const loginData = ref<Form>({
   username: '',
@@ -33,9 +33,26 @@ const registerData = ref({
   email: '',
   password: '',
   confirmPwd: '',
-  code: '',
+  captcha: '',
   agreed: false
 })
+
+/** 简单数学验证码（前端校验，避免假“邮箱验证码”） */
+const captchaA = ref(0)
+const captchaB = ref(0)
+const captchaAnswer = computed(() => captchaA.value + captchaB.value)
+
+function refreshCaptcha() {
+  captchaA.value = 1 + Math.floor(Math.random() * 9)
+  captchaB.value = 1 + Math.floor(Math.random() * 9)
+  registerData.value.captcha = ''
+}
+
+refreshCaptcha()
+
+const USERNAME_PATTERN = /^[a-zA-Z0-9_]{3,20}$/
+const PASSWORD_PATTERN = /^(?=.*[A-Za-z])(?=.*\d).{6,20}$/
+
 const rules: FormRules = {
   username: [
     { required: true, message: '请输入账户名', trigger: 'blur' },
@@ -45,54 +62,67 @@ const rules: FormRules = {
     { required: true, message: '请输入密码', trigger: 'blur' },
     { min: 6, message: '密码长度不能少于 6 位', trigger: 'blur' }
   ]
-};
+}
 
-//重置表单
+function apiErrorMessage(err: unknown, fallback: string) {
+  if (err && typeof err === 'object') {
+    const e = err as { message?: string; response?: { data?: { message?: string } } }
+    return e.response?.data?.message || e.message || fallback
+  }
+  return fallback
+}
+
 const onReset: FormProps['onReset'] = () => {
-  loginData.value = {
-    username: '',
-    password: ''
-  };
-  MessagePlugin.success('重置成功');
-};
+  loginData.value = { username: '', password: '' }
+  MessagePlugin.success('已清空')
+}
 
-//登录
 const onSubmit: FormProps['onSubmit'] = async ({ validateResult, firstError }) => {
-  //判断表单是否验证通过
-  if (validateResult !== true) return MessagePlugin.warning(String(firstError));
+  if (validateResult !== true) return MessagePlugin.warning(String(firstError))
   isloading.value = true
   try {
-    const res: ApiResponse<LoginResponse> = await authApi.login(loginData.value)
-    userStore.setToken(res.data.token);
+    const payload = {
+      username: loginData.value.username.trim(),
+      password: loginData.value.password
+    }
+    const res: ApiResponse<LoginResponse> = await authApi.login(payload)
+    userStore.setToken(res.data.token)
     userStore.user = {
       id: res.data.user.id,
       username: res.data.user.username,
       email: res.data.user.email,
       nickname: res.data.user.nickname || res.data.user.username,
       avatar: res.data.user.avatar || '',
-    };
-    MessagePlugin.success('登录成功');
+    }
+    MessagePlugin.success('登录成功')
     const redirect = typeof router.currentRoute.value.query.redirect === 'string'
       ? router.currentRoute.value.query.redirect
       : '/dashboard'
     router.push(redirect)
   } catch (error) {
-    MessagePlugin.error(String(error));
+    MessagePlugin.error(apiErrorMessage(error, '登录失败，请检查账户名和密码'))
   } finally {
     isloading.value = false
   }
-};
+}
 
-//注册
 const onRegister = async ({ validateResult, firstError }: {
-  validateResult: FormValidateResult;
-  firstError?: string;
+  validateResult: FormValidateResult
+  firstError?: string
 }) => {
-  console.log('validateResult', validateResult);
-  if (validateResult !== true) return MessagePlugin.warning(String(firstError));
+  if (validateResult !== true) return MessagePlugin.warning(String(firstError))
+  if (Number(registerData.value.captcha) !== captchaAnswer.value) {
+    MessagePlugin.warning('验证码计算错误')
+    refreshCaptcha()
+    return
+  }
   isloading.value = true
   try {
-    const res: ApiResponse<RegisterResponse> = await authApi.register(registerData.value)
+    const res: ApiResponse<RegisterResponse> = await authApi.register({
+      username: registerData.value.username.trim(),
+      email: registerData.value.email.trim(),
+      password: registerData.value.password,
+    })
     userStore.setToken(res.data.token)
     userStore.user = {
       id: res.data.user.id,
@@ -101,35 +131,40 @@ const onRegister = async ({ validateResult, firstError }: {
       nickname: res.data.user.nickname || res.data.user.username,
       avatar: '',
     }
-    MessagePlugin.success('注册成功');
+    MessagePlugin.success('注册成功')
     router.push('/dashboard')
   } catch (error) {
-    MessagePlugin.error(String(error));
+    MessagePlugin.error(apiErrorMessage(error, '注册失败'))
+    refreshCaptcha()
   } finally {
     isloading.value = false
   }
 }
 
-const visibleTop = ref(true);
-const placement: DialogProps['placement'] = 'top';
-const top: DialogProps['top'] = '10vh';
+const visibleTop = ref(false)
+const placement: DialogProps['placement'] = 'top'
+const top: DialogProps['top'] = '10vh'
 const close: DialogProps['onClose'] = () => {
-  MessagePlugin.info('请先同意声明后操作');
-};
+  visibleTop.value = false
+}
 const confirm: DialogProps['onConfirm'] = () => {
-  visibleTop.value = false;
-  MessagePlugin.success('感谢您的同意！欢迎━(*｀∀´*)ノ亻!进入登录页面');
+  visibleTop.value = false
   registerData.value.agreed = true
-};
+  MessagePlugin.success('已同意项目声明')
+}
 const declareText = declare.declare
 
 const { width } = useWindowSize()
 const showComponent = computed(() => width.value > 768)
 
 const registerRules: FormRules = {
-  name: [
-    { required: true, message: '请输入姓名', trigger: 'blur' },
-    { max: 20, message: '姓名不能超过20个字符', trigger: 'blur' }
+  username: [
+    { required: true, message: '请输入用户名', trigger: 'blur' },
+    {
+      validator: (val: string) => USERNAME_PATTERN.test(String(val || '').trim()),
+      message: '用户名需 3-20 位字母/数字/下划线',
+      trigger: 'blur'
+    }
   ],
   email: [
     { required: true, message: '请输入邮箱', trigger: 'blur' },
@@ -137,7 +172,11 @@ const registerRules: FormRules = {
   ],
   password: [
     { required: true, message: '请设置密码', trigger: 'blur' },
-    { min: 6, max: 20, message: '密码长度应为6-20位', trigger: 'blur' }
+    {
+      validator: (val: string) => PASSWORD_PATTERN.test(String(val || '')),
+      message: '密码需 6-20 位，且同时包含字母和数字',
+      trigger: 'blur'
+    }
   ],
   confirmPwd: [
     { required: true, message: '请再次输入密码', trigger: 'blur' },
@@ -147,40 +186,26 @@ const registerRules: FormRules = {
       trigger: 'blur'
     }
   ],
-  //  code: [
-  //    { required: true, message: '请输入验证码', trigger: 'blur' },
-  //    { pattern: /^\d{6}$/, message: '验证码为6位数字', trigger: 'blur' }
-  //  ],
+  captcha: [
+    { required: true, message: '请填写验证码', trigger: 'blur' },
+    {
+      validator: (val: string) => Number(val) === captchaAnswer.value,
+      message: '验证码不正确',
+      trigger: 'blur'
+    }
+  ],
   agreed: [
-    { required: true, message: '请阅读并同意用户协议', trigger: 'change' },
-    { validator: (val: boolean) => val === true, message: '请勾选同意协议' }
+    {
+      validator: (val: boolean) => val === true,
+      message: '请勾选同意项目声明',
+      trigger: 'change'
+    }
   ]
 }
 
-// 验证码发送（示例）
-const codeLoading = ref(false)
-const codeText = ref('发送验证码')
-const sendCode = () => {
-  if (!registerData.value.email) {
-    MessagePlugin.warning('请先输入邮箱')
-    return
-  }
-  codeLoading.value = true
-  let count = 60
-  codeText.value = `${count}s后重发`
-  const timer = setInterval(() => {
-    count--
-    if (count <= 0) {
-      clearInterval(timer)
-      codeLoading.value = false
-      codeText.value = '发送验证码'
-    } else {
-      codeText.value = `${count}s后重发`
-    }
-  }, 1000)
-  // 模拟发送请求
-  MessagePlugin.success('验证码已发送')
-}
+watch(isRegister, (v) => {
+  if (v) refreshCaptcha()
+})
 </script>
 
 <template>
@@ -194,42 +219,54 @@ const sendCode = () => {
       </t-col>
       <t-col :span="12" class="right-item">
         <template v-if="isRegister">
-          <t-form ref="registerForm" :data="registerData" :rules="registerRules" :colon="true" label-width="100px"
-            @submit="onRegister" class="registForm">
-            <t-form-item label="姓名" name="username">
-              <t-input v-model="registerData.username" placeholder="请输入姓名" />
+          <t-form
+            ref="registerForm"
+            :data="registerData"
+            :rules="registerRules"
+            :colon="true"
+            label-width="100px"
+            @submit="onRegister"
+            class="registForm"
+          >
+            <t-form-item label="用户名" name="username">
+              <t-input v-model="registerData.username" maxlength="20" placeholder="3-20 位字母/数字/下划线" />
             </t-form-item>
             <t-form-item label="邮箱" name="email">
               <t-input v-model="registerData.email" placeholder="请输入邮箱" />
             </t-form-item>
             <t-form-item label="密码" name="password">
-              <t-input v-model="registerData.password" type="password" placeholder="请设置密码（6-20位）" />
+              <t-input
+                v-model="registerData.password"
+                type="password"
+                maxlength="20"
+                placeholder="6-20 位，需含字母和数字"
+              />
             </t-form-item>
             <t-form-item label="确认密码" name="confirmPwd">
               <t-input v-model="registerData.confirmPwd" type="password" placeholder="请再次输入密码" />
             </t-form-item>
-            <t-form-item label="验证码" name="code">
+            <t-form-item label="验证码" name="captcha">
               <t-space style="width:100%;">
-                <t-input v-model="registerData.code" placeholder="请输入6位验证码" style="flex:1;" />
-                <t-button theme="primary" variant="outline" :loading="codeLoading"
-                  :disabled="codeLoading || !registerData.email" @click="sendCode">
-                  {{ codeText }}
+                <t-input v-model="registerData.captcha" placeholder="请输入计算结果" style="flex:1;" />
+                <t-button theme="default" variant="outline" @click="refreshCaptcha">
+                  {{ captchaA }} + {{ captchaB }} = ?
                 </t-button>
               </t-space>
             </t-form-item>
-            <!-- 用户协议：添加 :label-width="0" -->
             <t-form-item name="agreed" :label-width="0">
-              <t-checkbox v-model="registerData.agreed">我已阅读并同意《<t-link
-                  @click.stop.prevent="visibleTop = true">用户协议</t-link>》</t-checkbox>
+              <t-checkbox v-model="registerData.agreed">
+                我已阅读并同意
+                <t-link @click.stop.prevent="visibleTop = true">《项目声明》</t-link>
+              </t-checkbox>
             </t-form-item>
             <t-form-item :label-width="0">
-              <t-button theme="primary" type="submit" block style="margin-right: 10px;">
+              <t-button theme="primary" type="submit" block :loading="isloading" style="margin-right: 10px;">
                 <template #icon>
                   <UserAddIcon />
                 </template>
                 注册
               </t-button>
-              <t-button variant="text" block @click="isRegister = false">
+              <t-button variant="text" block :disabled="isloading" @click="isRegister = false">
                 <template #icon>
                   <LoginIcon />
                 </template>
@@ -239,17 +276,27 @@ const sendCode = () => {
           </t-form>
         </template>
         <template v-else>
-          <t-form ref="form" :rules="rules" :data="loginData" :colon="true" :label-width="0" @reset="onReset"
-            @submit="onSubmit" class="registForm">
-            <t-button theme="default" style="width: 150px; margin-bottom: 10px;" variant="outline" block
-              @click="isRegister = true">
-              <template #icon>
-                <ArrowLeftIcon size="15" :fill-color='"transparent"' :stroke-color='"currentColor"' :stroke-width="2" />
-              </template>
-              返回注册
+          <t-form
+            ref="form"
+            :rules="rules"
+            :data="loginData"
+            :colon="true"
+            :label-width="0"
+            @reset="onReset"
+            @submit="onSubmit"
+            class="registForm"
+          >
+            <t-button
+              theme="default"
+              style="width: 150px; margin-bottom: 10px;"
+              variant="outline"
+              block
+              @click="isRegister = true"
+            >
+              没有账号？去注册
             </t-button>
             <t-form-item name="username">
-              <t-input v-model="loginData.username" clearable placeholder="请输入账户名">
+              <t-input v-model="loginData.username" clearable placeholder="请输入账户名或邮箱">
                 <template #prefix-icon>
                   <desktop-icon />
                 </template>
@@ -270,20 +317,37 @@ const sendCode = () => {
                 登录
               </t-button>
 
-              <t-button theme="default" variant="outline" type="reset" block :loading="isloading"
-                :disabled="loginData.username === '' && loginData.password === ''">
+              <t-button
+                theme="default"
+                variant="outline"
+                type="reset"
+                block
+                :loading="isloading"
+                :disabled="loginData.username === '' && loginData.password === ''"
+              >
                 <template #icon>
                   <RefreshIcon />
                 </template>
                 重置
               </t-button>
             </t-form-item>
+            <p class="demo-hint">测试账号：demo / demo123456</p>
           </t-form>
         </template>
       </t-col>
     </t-row>
-    <t-dialog :placement="placement" header="项目声明：" :body="declareText" :top="top" :visible="visibleTop"
-      :on-confirm="confirm" :on-close="close" style="z-index: 1000;" />
+    <t-dialog
+      :placement="placement"
+      header="项目声明"
+      :body="declareText"
+      :top="top"
+      :visible="visibleTop"
+      :on-confirm="confirm"
+      :on-close="close"
+      confirm-btn="同意并继续"
+      cancel-btn="关闭"
+      style="z-index: 1000;"
+    />
   </div>
 </template>
 
@@ -292,7 +356,7 @@ const sendCode = () => {
   display: flex;
   justify-content: center;
   align-items: center;
-  width: 100vw;
+  width: 100%;
   height: 100vh;
   background: radial-gradient(ellipse at 20% 50%, #1a1a2e 0%, #0d0d0d 70%);
   overflow: hidden;
@@ -329,7 +393,6 @@ const sendCode = () => {
       color: #fff;
       position: relative;
       overflow: hidden;
-
     }
 
     .right-item {
@@ -355,9 +418,18 @@ const sendCode = () => {
         box-shadow:
           0 8px 32px rgba(0, 0, 0, 0.06),
           inset 0 1px 0 rgba(255, 255, 255, 0.8);
+        max-height: 100%;
+        overflow: auto;
       }
     }
   }
+}
+
+.demo-hint {
+  margin-top: 12px;
+  text-align: center;
+  font-size: 12px;
+  color: $text-secondary;
 }
 
 :deep(.t-row) {
@@ -413,7 +485,6 @@ const sendCode = () => {
   color: $gold-dark;
 }
 
-// 主按钮
 :deep(.t-button--theme-primary) {
   border-radius: 12px !important;
   height: 44px;

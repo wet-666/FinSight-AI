@@ -1,7 +1,8 @@
-import bcrypt from 'bcryptjs'
+﻿import bcrypt from 'bcryptjs'
 import dotenv from 'dotenv'
 import { query } from '../config/database'
 import { generateSeedKLine, saveKLineToDb, STOCK_META } from '../services/marketService'
+import { toDateStr } from '../utils/date'
 
 dotenv.config()
 
@@ -25,8 +26,8 @@ async function upsertUser(){
     const hash = await bcrypt.hash('demo123456', 10);
   await query(
     `INSERT INTO users (username, email, password_hash, nickname, avatar)
-     VALUES ('demo', 'demo@zhi-touyan.local', ?, '演示用户', '')
-     ON DUPLICATE KEY UPDATE password_hash = VALUES(password_hash), nickname = '演示用户'`,
+     VALUES ('demo', 'demo@zhi-touyan.local', ?, '示例用户', '')
+     ON DUPLICATE KEY UPDATE password_hash = VALUES(password_hash), nickname = '示例用户'`,
     [hash]
   );
   const rows = await query<{ id: number }[]>(
@@ -71,7 +72,7 @@ async function seedSentiment(codes: string[]) {
       const d = new Date(now);
       d.setDate(d.getDate() - i);
       if (d.getDay() === 0 || d.getDay() === 6) continue;
-      const date = d.toISOString().slice(0, 10);
+      const date = toDateStr(d);
       const seed = parseInt(code.slice(-3), 10) || 1;
       const score =
         Math.round((Math.sin((i + seed) / 9) * 0.55 + Math.cos(i / 15) * 0.2) * 100) / 100;
@@ -96,8 +97,9 @@ async function seedSentiment(codes: string[]) {
   for (let i = 30; i >= 0; i--) {
     const d = new Date(now);
     d.setDate(d.getDate() - i);
-    const date = d.toISOString().slice(0, 10);
-    const score = Math.round(Math.sin(i / 7) * 0.35 * 100) / 100;
+    const date = toDateStr(d);
+    const score =
+      Math.round((Math.sin((i + 3) / 7) * 0.35 + Math.cos(i / 11) * 0.12) * 100) / 100;
     await query(
       `INSERT INTO market_sentiment (trade_date, avg_score, news_count)
        VALUES (?, ?, 12)
@@ -122,7 +124,7 @@ async function seedNews(codes: string[]) {
     await query(
       `INSERT INTO news (title, content, source, url, related_stocks, published_at)
        VALUES (?, ?, '智投研演示源', '', ?, NOW())`,
-      [s.title, `${s.title}。本条为演示新闻，用于舆情引擎与 Agent 编排联调。`, JSON.stringify(related)]
+      [s.title, `${s.title}。示例资讯，用于本地联调。`, JSON.stringify(related)]
     );
     const newsRows = await query<{ id: number }[]>(
       `SELECT id FROM news WHERE title = ? ORDER BY id DESC LIMIT 1`,

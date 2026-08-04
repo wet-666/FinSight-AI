@@ -20,6 +20,14 @@ export const useUserStore = defineStore('user', () => {
     token.value = '';
     user.value = null;
     localStorage.removeItem('token');
+    try {
+      // 避免循环依赖：动态导入
+      import('./aiSessionStore').then(({ useAiSessionStore }) => {
+        useAiSessionStore().clear();
+      });
+    } catch {
+      /* ignore */
+    }
   }
 
   async function fetchProfile() {

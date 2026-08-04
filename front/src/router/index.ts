@@ -48,6 +48,12 @@ const router = createRouter({
           meta: { auth: true, title: '模拟投资' },
         },
         {
+          path: 'agent-runs',
+          name: 'AgentRuns',
+          component: () => import('@/views/AgentRunsView.vue'),
+          meta: { auth: true, title: 'Agent 历史' },
+        },
+        {
           path: 'risk-assessment',
           name: 'RiskAssessment',
           component: () => import('@/views/RiskAssessment.vue'),

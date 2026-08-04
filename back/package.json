@@ -6,7 +6,9 @@
   "scripts": {
     "dev": "tsx watch src/index.ts",
     "build": "tsc",
-    "start": "node dist/index.js"
+    "start": "node dist/index.js",
+    "seed": "tsx src/script/seed.ts",
+    "check-db": "tsx src/script/check-db.ts"
   },
   "dependencies": {
     "@langchain/core": "^0.3.0",
@@ -17,6 +19,7 @@
     "cors": "^2.8.5",
     "dotenv": "^16.4.0",
     "express": "^4.21.0",
+    "iconv-lite": "^0.7.3",
     "jsonwebtoken": "^9.0.2",
     "langchain": "^0.3.0",
     "mysql2": "^3.11.0",
