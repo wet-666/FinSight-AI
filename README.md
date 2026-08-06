@@ -16,7 +16,7 @@ A 股投研辅助 Demo：聚合公开行情与资讯，提供舆情分析、轻�
 | 部分 | 技术 |
 |------|------|
 | 前端 | Vue 3、Vite、Pinia、TDesign、ECharts |
-| 后端 | Express、TypeScript、MySQL、LangChain |
+| 后端 | Express、TypeScript、MySQL、Redis（可选缓存）、LangChain |
 | 共享 | `shared/types` |
 | 模型 | OpenAI 兼容接口（如 SiliconFlow） |
 
@@ -34,6 +34,7 @@ FinSight-AI/
 
 - Node.js 18+
 - MySQL 8+
+- Redis（可选；用于行情短时缓存，未启动时自动降级）
 
 ## 快速开始
 
@@ -82,12 +83,20 @@ npm run dev:front
 - MySQL 连接相关变量
 - `OPENAI_API_KEY` / `OPENAI_BASE_URL` / 模型名
 - 可选：`OPENAI_EMBEDDING_MODEL`（如 `BAAI/bge-m3`）
+- 可选 Redis：`REDIS_HOST` / `REDIS_PORT` / `REDIS_QUOTE_TTL`（默认缓存报价约 20 秒）
 
 未配置 Key 时，部分能力会降级为规则或本地样例数据，页面会有相应提示。
+
+Windows 本地若已解压 Redis（如 `E:\Redis-x64-5.0.14.1`），可先启动服务再开后端：
+
+```bash
+E:\Redis-x64-5.0.14.1\redis-server.exe E:\Redis-x64-5.0.14.1\redis.windows.conf
+```
 
 ## 说明
 
 - 向量检索为进程内存储，重启后需重新构建
+- 行情接口会优先读 Redis 短时缓存；Redis 不可用时直连外网
 - 外网资讯接口不稳定时可能使用本地样例并标记数据缺口
 - 回测与模拟交易为教学用途，非实盘
 

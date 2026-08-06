@@ -1,0 +1,85 @@
+// 业务页壳层颜色：TDesign 管组件；自写卡片/文字必须用这些变量，才能跟暗黑模式
+:root {
+  --fs-bg-page: #f5f7fa;
+  --fs-bg-surface: #ffffff;
+  --fs-bg-muted: #f9fafb;
+  --fs-bg-muted-hover: #ecf2fe;
+  --fs-bg-soft: #f7f8fa;
+  --fs-bg-chip: #f3f3f3;
+  --fs-border: #e7e7e7;
+  --fs-border-soft: #f0f0f0;
+  --fs-text-primary: #1f2937;
+  --fs-text-secondary: #666666;
+  --fs-text-muted: #999999;
+  --fs-text-strong: #1d2129;
+  --fs-brand: #0052d9;
+  --fs-brand-soft: rgba(0, 82, 217, 0.08);
+  --fs-warning-bg: #fff3cd;
+  --fs-warning-text: #8a6d3b;
+
+  --fs-market-bg: #eef2f8;
+  --fs-market-grid: rgba(0, 82, 217, 0.07);
+  --fs-market-line: #3b82f6;
+  --fs-market-glow-a: rgba(0, 82, 217, 0.14);
+  --fs-market-glow-b: rgba(14, 165, 233, 0.12);
+
+  color-scheme: light;
+}
+
+html[theme-mode='dark'] {
+  --fs-bg-page: #141414;
+  --fs-bg-surface: #1f1f1f;
+  --fs-bg-muted: #2a2a2a;
+  --fs-bg-muted-hover: #243044;
+  --fs-bg-soft: #262626;
+  --fs-bg-chip: #333333;
+  --fs-border: #3a3a3a;
+  --fs-border-soft: #333333;
+  --fs-text-primary: #e8e8e8;
+  --fs-text-secondary: #b0b0b0;
+  --fs-text-muted: #8a8a8a;
+  --fs-text-strong: #f0f0f0;
+  --fs-brand: #4582e6;
+  --fs-brand-soft: rgba(69, 130, 230, 0.18);
+  --fs-warning-bg: rgba(227, 160, 8, 0.16);
+  --fs-warning-text: #e6c07b;
+
+  --fs-market-bg: #0f1419;
+  --fs-market-grid: rgba(69, 130, 230, 0.1);
+  --fs-market-line: #60a5fa;
+  --fs-market-glow-a: rgba(69, 130, 230, 0.18);
+  --fs-market-glow-b: rgba(56, 189, 248, 0.1);
+
+  color-scheme: dark;
+}
+
+html,
+body,
+#app {
+  background: var(--fs-bg-page);
+  color: var(--fs-text-primary);
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+/* TDesign 容器跟业务表面色对齐 */
+.t-card,
+.t-table,
+.t-tabs,
+.t-dialog,
+.t-drawer,
+.t-popup,
+.t-select__dropdown,
+.t-dropdown__menu {
+  --td-bg-color-container: var(--fs-bg-surface);
+  --td-bg-color-container-hover: var(--fs-bg-muted);
+  --td-bg-color-secondarycontainer: var(--fs-bg-muted);
+  --td-component-border: var(--fs-border);
+  --td-text-color-primary: var(--fs-text-primary);
+  --td-text-color-secondary: var(--fs-text-secondary);
+  --td-text-color-placeholder: var(--fs-text-muted);
+}
+
+/* 业务页通用：未单独改样式的浅灰块也能跟主题 */
+.page-container {
+  color: var(--fs-text-primary);
+}

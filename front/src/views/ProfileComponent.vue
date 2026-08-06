@@ -213,6 +213,6 @@ onMounted(async () => {
 .hint {
   margin: 0;
   font-size: 12px;
-  color: #999;
+  color: var(--fs-text-muted);
 }
 </style>

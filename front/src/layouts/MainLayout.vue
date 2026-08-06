@@ -6,7 +6,7 @@
           <span class="logo-icon">📈</span>
           <span class="logo-text">FinSight</span>
         </div>
-        <t-menu :value="activeMenu" theme="light" @change="onMenuChange">
+        <t-menu :value="activeMenu" :theme="themeStore.isDark ? 'dark' : 'light'" @change="onMenuChange">
           <t-menu-item value="dashboard">
             <template #icon><t-icon name="dashboard" /></template>
             智能仪表盘
@@ -61,22 +61,36 @@
           <span class="subtitle">FinSight · 可观测三 Agent · 教育模拟</span>
         </div>
         <div class="header-right">
-          <t-button theme="default" variant="text" @click="triggerSentiment">
-            <t-icon name="refresh" /> 更新舆情
+          <t-button
+            theme="default"
+            variant="text"
+            class="header-action-btn"
+            :title="themeStore.isDark ? '切换浅色模式' : '切换暗黑模式'"
+            @click="themeStore.toggle()"
+          >
+            <template #icon>
+              <t-icon :name="themeStore.isDark ? 'mode-light' : 'mode-dark'" />
+            </template>
+            {{ themeStore.isDark ? '浅色' : '暗黑' }}
+          </t-button>
+          <t-button theme="default" variant="text" class="header-action-btn" @click="triggerSentiment">
+            <template #icon>
+              <t-icon name="refresh" />
+            </template>
+            更新舆情
           </t-button>
           <t-dropdown :options="userOptions" @click="onUserAction">
-            <t-button variant="text" class="user-btn">
+            <t-button variant="text" class="header-action-btn user-btn">
               <t-avatar
                 v-if="avatarSrc"
                 size="28px"
                 :image="avatarSrc"
-                style="margin-right: 6px"
               />
-              <t-avatar v-else size="28px" style="margin-right: 6px">
+              <t-avatar v-else size="28px">
                 {{ (userStore.user?.nickname || '用').slice(0, 1) }}
               </t-avatar>
-              {{ userStore.user?.nickname || '用户' }}
-              <t-icon name="chevron-down" />
+              <span class="user-name">{{ userStore.user?.nickname || '用户' }}</span>
+              <t-icon name="chevron-down" class="user-caret" />
             </t-button>
           </t-dropdown>
         </div>
@@ -97,12 +111,14 @@ import { computed, onMounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { MessagePlugin } from 'tdesign-vue-next';
 import { useUserStore } from '@/stores/userStore';
+import { useThemeStore } from '@/stores/themeStore';
 import { sentimentApi } from '@/api';
 import SystemStatusBanner from '@/components/SystemStatusBanner.vue';
 
 const route = useRoute();
 const router = useRouter();
 const userStore = useUserStore();
+const themeStore = useThemeStore();
 
 const avatarSrc = computed(() => {
   const a = userStore.user?.avatar || '';
@@ -189,8 +205,8 @@ onMounted(() => {
   flex-shrink: 0;
   height: 100vh;
   overflow: hidden;
-  background: #fff;
-  border-right: 1px solid #e7e7e7;
+  background: var(--fs-bg-surface);
+  border-right: 1px solid var(--fs-border);
 }
 
 .sidebar-inner {
@@ -217,7 +233,7 @@ onMounted(() => {
   padding: 20px 16px;
   font-size: 18px;
   font-weight: 600;
-  color: #0052d9;
+  color: var(--fs-brand);
   flex-shrink: 0;
 }
 
@@ -227,8 +243,8 @@ onMounted(() => {
 
 .header {
   flex-shrink: 0;
-  background: #fff;
-  border-bottom: 1px solid #e7e7e7;
+  background: var(--fs-bg-surface);
+  border-bottom: 1px solid var(--fs-border);
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -237,7 +253,7 @@ onMounted(() => {
 }
 
 .subtitle {
-  color: #666;
+  color: var(--fs-text-secondary);
   font-size: 14px;
 }
 
@@ -247,13 +263,52 @@ onMounted(() => {
   gap: 8px;
 }
 
+/* 顶栏「更新舆情 / 头像」：图标与文字垂直居中（此前选择器写错未生效） */
+.header-action-btn {
+  display: inline-flex !important;
+  align-items: center;
+  gap: 6px;
+  height: 36px;
+  padding: 0 8px;
+  line-height: 1;
+}
+
+.header-action-btn :deep(.t-button__text),
+.header-action-btn :deep(.t-button__content) {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  line-height: 1;
+}
+
+.header-action-btn :deep(.t-icon),
+.header-action-btn :deep(.t-avatar) {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  vertical-align: middle;
+}
+
+.user-name {
+  max-width: 120px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  line-height: 1;
+}
+
+.user-caret {
+  margin-left: 2px;
+}
+
 .content {
   flex: 1;
   min-width: 0;
   min-height: 0;
   overflow-x: hidden;
   overflow-y: auto;
-  background: #f5f7fa;
+  background: var(--fs-bg-page);
 }
 
 .sidebar-footer {
@@ -266,9 +321,5 @@ onMounted(() => {
   display: flex;
   flex-wrap: wrap;
   gap: 4px;
-}
-
-:deep(.t-button .t-button--text){
-  display: flex;
 }
 </style>

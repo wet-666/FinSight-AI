@@ -66,9 +66,9 @@ onMounted(refresh);
   justify-content: space-between;
   gap: 12px;
   padding: 8px 16px;
-  border-bottom: 1px solid #e7e7e7;
+  border-bottom: 1px solid var(--fs-border);
   font-size: 12px;
-  color: #4b5563;
+  color: var(--fs-text-secondary);
   flex-shrink: 0;
   min-width: 0;
   overflow: hidden;
@@ -97,5 +97,18 @@ onMounted(refresh);
 }
 .is-error {
   background: #fff1f0;
+}
+
+</style>
+
+<style>
+html[theme-mode='dark'] .sys-banner.is-ok {
+  background: rgba(0, 168, 112, 0.12);
+}
+html[theme-mode='dark'] .sys-banner.is-warn {
+  background: rgba(227, 160, 8, 0.14);
+}
+html[theme-mode='dark'] .sys-banner.is-error {
+  background: rgba(227, 77, 89, 0.14);
 }
 </style>

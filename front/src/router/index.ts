@@ -105,16 +105,13 @@ const router = createRouter({
 router.beforeEach((to, _from, next) => {
   const token = localStorage.getItem('token');
   const needAuth = to.matched.some((r) => r.meta.auth);
-  const isGuest = to.matched.some((r) => r.meta.guest);
 
+  // 未登录访问业务页 → 登录页
   if (needAuth && !token) {
     next({ name: 'Login', query: { redirect: to.fullPath } });
     return;
   }
-  if (isGuest && token) {
-    next({ name: 'Dashboard' });
-    return;
-  }
+  // 已登录仍允许打开 /login（方便改 UI / 换号）；不再自动踢去仪表盘
   next();
 });
 

@@ -362,17 +362,17 @@ onUnmounted(() => {
 }
 .hint {
   font-size: 12px;
-  color: #999;
+  color: var(--fs-text-muted);
   white-space: nowrap;
   flex-shrink: 0;
 }
 .strategy-desc h4 {
   margin-bottom: 8px;
-  color: #333;
+  color: var(--fs-text-primary);
 }
 .strategy-desc p {
   font-size: 13px;
-  color: #666;
+  color: var(--fs-text-secondary);
   line-height: 1.6;
 }
 .stats-row {
@@ -380,7 +380,7 @@ onUnmounted(() => {
 }
 .ai-summary {
   line-height: 1.8;
-  color: #333;
+  color: var(--fs-text-primary);
 }
 .chart-box {
   width: 100%;
@@ -388,7 +388,7 @@ onUnmounted(() => {
 }
 .diag {
   font-size: 12px;
-  color: #666;
+  color: var(--fs-text-secondary);
   margin-bottom: 8px;
 }
 </style>

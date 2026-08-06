@@ -10,6 +10,7 @@ import { useWindowSize } from '@vueuse/core'
 import declare from '@/views/declare.json'
 import { authApi } from '@/api/index'
 import { useUserStore } from '@/stores/userStore'
+import { useThemeStore } from '@/stores/themeStore'
 import { useRouter } from 'vue-router'
 import type { ApiResponse, LoginResponse, RegisterResponse } from '@shared/types/login'
 
@@ -21,8 +22,14 @@ type Form = {
 type FormValidateResult = boolean | Record<string, { message: string; result: boolean }[]>
 
 const userStore = useUserStore()
+const themeStore = useThemeStore()
 const router = useRouter()
 const isRegister = ref(false)
+
+function relogin() {
+  userStore.logout()
+  MessagePlugin.info('已退出，可重新登录')
+}
 const isloading = ref(false)
 const loginData = ref<Form>({
   username: '',
@@ -210,14 +217,33 @@ watch(isRegister, (v) => {
 
 <template>
   <div class="login-view">
-    <LoginBackground :count="55" :gravity="0.35" :repulsion-radius="120" :repulsion-strength="2.5" class="my-bg" />
+    <LoginBackground class="my-bg" />
+    <t-button
+      class="theme-toggle"
+      theme="default"
+      variant="outline"
+      shape="round"
+      size="small"
+      :title="themeStore.isDark ? '切换浅色模式' : '切换暗黑模式'"
+      @click="themeStore.toggle()"
+    >
+      <template #icon>
+        <t-icon :name="themeStore.isDark ? 'sunny' : 'moon'" />
+      </template>
+      {{ themeStore.isDark ? '浅色' : '暗黑' }}
+    </t-button>
     <t-row class="login-form">
-      <t-col :span="12" class="left-item" v-show="showComponent">
-        <div class="left-item">
-          <LoginLeftPanel :is-register="isRegister" />
-        </div>
+      <t-col v-show="showComponent" :span="12" class="left-item">
+        <LoginLeftPanel :is-register="isRegister" />
       </t-col>
       <t-col :span="12" class="right-item">
+        <div v-if="userStore.isLoggedIn" class="session-tip">
+          <span>当前浏览器仍保持登录状态</span>
+          <t-space size="small">
+            <t-link theme="primary" @click="router.push('/dashboard')">进入系统</t-link>
+            <t-link theme="danger" @click="relogin">退出后重登</t-link>
+          </t-space>
+        </div>
         <template v-if="isRegister">
           <t-form
             ref="registerForm"
@@ -358,14 +384,24 @@ watch(isRegister, (v) => {
   align-items: center;
   width: 100%;
   height: 100vh;
-  background: radial-gradient(ellipse at 20% 50%, #1a1a2e 0%, #0d0d0d 70%);
   overflow: hidden;
   position: relative;
+  background: var(--fs-market-bg);
 
   .my-bg {
     position: absolute;
     inset: 0;
     z-index: 0;
+  }
+
+  .theme-toggle {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    z-index: 2;
+    background: var(--fs-bg-surface) !important;
+    border-color: var(--fs-border) !important;
+    color: var(--fs-text-primary) !important;
   }
 
   .login-form {
@@ -374,22 +410,17 @@ watch(isRegister, (v) => {
     display: flex;
     width: min(920px, 92vw);
     height: 520px;
-    border-radius: 24px;
+    border-radius: 20px;
     overflow: hidden;
-    box-shadow:
-      0 25px 50px -12px rgba(0, 0, 0, 0.55),
-      0 0 0 1px rgba(255, 255, 255, 0.08);
-    backdrop-filter: blur(2px);
+    border: 1px solid var(--fs-border);
+    box-shadow: 0 18px 40px rgba(15, 23, 42, 0.12);
+    background: var(--fs-bg-surface);
 
     .left-item {
       height: 100%;
       flex: 1;
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
-      align-items: center;
-      padding: 48px 40px;
-      background: linear-gradient(145deg, rgba(208, 168, 106, 0.25) 0%, rgba(30, 30, 40, 0.85) 100%);
+      padding: 0 !important;
+      margin: 0;
       color: #fff;
       position: relative;
       overflow: hidden;
@@ -399,25 +430,22 @@ watch(isRegister, (v) => {
       height: 100%;
       flex: 1;
       display: flex;
+      flex-direction: column;
       align-items: center;
       justify-content: center;
       padding: 40px 36px;
-      background: $glass-bg;
-      backdrop-filter: blur(20px);
-      -webkit-backdrop-filter: blur(20px);
+      background: var(--fs-bg-surface);
       margin: 0;
 
       .registForm {
         width: 100%;
         max-width: 380px;
         margin: 0;
-        padding: 28px 24px;
-        border-radius: 20px;
-        border: 1px solid rgba($gold, 0.35);
-        background: rgba(255, 255, 255, 0.6);
-        box-shadow:
-          0 8px 32px rgba(0, 0, 0, 0.06),
-          inset 0 1px 0 rgba(255, 255, 255, 0.8);
+        padding: 8px 4px;
+        border-radius: 0;
+        border: none;
+        background: transparent;
+        box-shadow: none;
         max-height: 100%;
         overflow: auto;
       }
@@ -425,11 +453,27 @@ watch(isRegister, (v) => {
   }
 }
 
+.session-tip {
+  width: 100%;
+  max-width: 380px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 16px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  font-size: 12px;
+  color: var(--fs-text-secondary);
+  background: var(--fs-bg-page);
+  border: 1px solid var(--fs-border);
+}
+
 .demo-hint {
   margin-top: 12px;
   text-align: center;
   font-size: 12px;
-  color: $text-secondary;
+  color: var(--fs-text-secondary);
 }
 
 :deep(.t-row) {
@@ -452,77 +496,32 @@ watch(isRegister, (v) => {
 }
 
 :deep(.t-form__label) {
-  color: $text-primary !important;
+  color: var(--fs-text-primary) !important;
   font-weight: 500;
 }
 
 :deep(.t-input) {
-  border-radius: 12px !important;
-  transition: all 0.25s ease;
-  background-color: #fafafa !important;
-  border-color: #e5e5e5 !important;
-
-  &:hover {
-    border-color: $gold-light !important;
-    background-color: #fff !important;
-    box-shadow: 0 2px 8px rgba($gold, 0.08);
-  }
-
-  &.t-is-focused,
-  &:focus-within {
-    border-color: $gold !important;
-    background-color: #fff !important;
-    box-shadow: 0 0 0 3px rgba($gold, 0.15);
-  }
+  border-radius: 10px !important;
+  transition: all 0.2s ease;
 }
 
 :deep(.t-input__inner) {
   font-size: 14px;
-  color: $text-primary;
-}
-
-:deep(.t-input__prefix) {
-  color: $gold-dark;
 }
 
 :deep(.t-button--theme-primary) {
-  border-radius: 12px !important;
+  border-radius: 10px !important;
   height: 44px;
   font-weight: 500;
-  letter-spacing: 0.5px;
-  background: linear-gradient(135deg, $gold 0%, $gold-dark 100%) !important;
-  border: none !important;
-  box-shadow: 0 4px 14px rgba($gold, 0.35);
-  transition: all 0.25s ease;
-
-  &:hover:not(.t-is-disabled) {
-    transform: translateY(-1px);
-    box-shadow: 0 6px 20px rgba($gold, 0.45);
-  }
-
-  &:active:not(.t-is-disabled) {
-    transform: translateY(0);
-  }
 }
 
 :deep(.t-button--variant-outline) {
-  border-radius: 12px !important;
-  border-color: $gold !important;
-  color: $gold-dark !important;
-
-  &:hover:not(.t-is-disabled) {
-    background: rgba($gold, 0.08) !important;
-  }
+  border-radius: 10px !important;
 }
 
 :deep(.t-button--variant-text) {
-  color: $text-secondary !important;
+  color: var(--fs-text-secondary) !important;
   margin-top: 8px;
-
-  &:hover {
-    color: $gold-dark !important;
-    background: rgba($gold, 0.06) !important;
-  }
 }
 
 :deep(.t-space) {
@@ -540,12 +539,7 @@ watch(isRegister, (v) => {
 
 :deep(.t-checkbox) {
   font-size: 13px;
-  color: $text-secondary;
-
-  .t-link {
-    color: $gold-dark !important;
-    font-weight: 500;
-  }
+  color: var(--fs-text-secondary);
 }
 
 @media (max-width: 768px) {

@@ -263,13 +263,13 @@ onMounted(load);
 
 <style scoped>
 .link {
-  color: #0052d9;
+  color: var(--fs-brand);
   cursor: pointer;
 }
 .count-hint {
   margin-top: 8px;
   font-size: 12px;
-  color: #999;
+  color: var(--fs-text-muted);
 }
 .stage {
   margin-bottom: 12px;
@@ -279,7 +279,7 @@ onMounted(load);
 }
 .stage p {
   margin: 0;
-  color: #555;
+  color: var(--fs-text-secondary);
   line-height: 1.6;
 }
 .cite-line {
@@ -288,12 +288,13 @@ onMounted(load);
   line-height: 1.5;
 }
 .muted {
-  color: #888;
+  color: var(--fs-text-secondary);
   font-size: 12px;
 }
 .report {
   white-space: normal;
-  background: #f7f8fa;
+  background: var(--fs-bg-soft);
+  color: var(--fs-text-primary);
   padding: 12px;
   border-radius: 8px;
   font-size: 13px;
@@ -328,18 +329,19 @@ onMounted(load);
   white-space: pre-wrap;
 }
 .ask-msg.user .ask-bubble {
-  background: #0052d9;
+  background: var(--fs-brand);
   color: #fff;
 }
 .ask-msg.assistant .ask-bubble {
-  background: #f3f3f3;
+  background: var(--fs-bg-chip);
+  color: var(--fs-text-primary);
 }
 .ask-input-row {
   display: flex;
   gap: 8px;
   position: sticky;
   bottom: 0;
-  background: #fff;
+  background: var(--fs-bg-surface);
   padding-top: 8px;
 }
 </style>

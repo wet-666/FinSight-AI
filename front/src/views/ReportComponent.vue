@@ -134,6 +134,6 @@ onMounted(loadList);
   font-family: Consolas, 'Microsoft YaHei', monospace;
   font-size: 13px;
   line-height: 1.6;
-  color: #333;
+  color: var(--fs-text-primary);
 }
 </style>

@@ -7,16 +7,16 @@ const props = withDefaults(defineProps<{
   isRegister: false
 })
 
-// 随机生成装饰用 K 线数据（非真实行情）
+/** 装饰用确定性 K 线（非真实行情） */
 const candles = computed(() => {
   const list: { x: number; open: number; close: number; high: number; low: number; up: boolean }[] = []
-  let price = 50
+  let price = 52
   for (let i = 0; i < 24; i++) {
     const open = price
-    const change = (Math.random() - 0.45) * 8
-    const close = Math.max(20, Math.min(80, open + change))
-    const high = Math.max(open, close) + Math.random() * 4
-    const low = Math.min(open, close) - Math.random() * 4
+    const wave = Math.sin(i / 3.2) * 5 + ((i * 17) % 7) - 3
+    const close = Math.max(22, Math.min(78, open + wave * 0.45))
+    const high = Math.max(open, close) + 2.2
+    const low = Math.min(open, close) - 2.2
     list.push({
       x: 20 + i * 14,
       open,
@@ -30,14 +30,16 @@ const candles = computed(() => {
   return list
 })
 
-const title = computed(() => props.isRegister ? '开启交易之旅' : '欢迎回来')
-const subtitle = computed(() => props.isRegister ? '注册账户，实时掌握市场动态' : '登录账户，继续您的投资计划')
+const title = computed(() => (props.isRegister ? '开启投研之旅' : '欢迎回来'))
+const subtitle = computed(() =>
+  props.isRegister ? '注册账户，用 Agent 读懂市场与舆情' : '登录后继续你的 A 股研究与模拟'
+)
 </script>
 
 <template>
   <div class="left-panel">
     <div class="brand">
-      <div class="logo">📈</div>
+      <div class="logo-mark">FS</div>
       <h2>{{ title }}</h2>
       <p>{{ subtitle }}</p>
     </div>
@@ -46,65 +48,51 @@ const subtitle = computed(() => props.isRegister ? '注册账户，实时掌握�
       <svg viewBox="0 0 360 120" class="kline-chart" aria-hidden="true">
         <defs>
           <linearGradient id="areaGrad" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stop-color="rgba(208,168,106,0.35)" />
-            <stop offset="100%" stop-color="rgba(208,168,106,0)" />
+            <stop offset="0%" stop-color="rgba(96,165,250,0.35)" />
+            <stop offset="100%" stop-color="rgba(96,165,250,0)" />
           </linearGradient>
-          <filter id="glow">
-            <feGaussianBlur stdDeviation="1.5" result="blur" />
-            <feMerge>
-              <feMergeNode in="blur" />
-              <feMergeNode in="SourceGraphic" />
-            </feMerge>
-          </filter>
         </defs>
 
-        <!-- 网格线 -->
-        <g class="grid" opacity="0.15">
+        <g class="grid" opacity="0.12">
           <line v-for="i in 5" :key="'h'+i" x1="10" :y1="i*24" x2="350" :y2="i*24" stroke="#fff" />
           <line v-for="i in 12" :key="'v'+i" :x1="i*28" y1="8" :x2="i*28" y2="112" stroke="#fff" />
         </g>
 
-        <!-- 趋势线区域 -->
         <path
           class="trend-area"
           :d="`M20,${100 - candles[0].close} ` +
-              candles.map((c, i) => `L${c.x},${100 - c.close}`).join(' ') +
+              candles.map((c) => `L${c.x},${100 - c.close}`).join(' ') +
               ` L${candles[candles.length-1].x},120 L20,120 Z`"
           fill="url(#areaGrad)"
         />
 
-        <!-- K 线 -->
         <g v-for="(c, i) in candles" :key="i" class="candle" :class="{ up: c.up, down: !c.up }">
-          <!-- 影线 -->
           <line
             :x1="c.x" :y1="100 - c.high"
             :x2="c.x" :y2="100 - c.low"
             stroke-width="1.5"
           />
-          <!-- 实体 -->
           <rect
             :x="c.x - 4"
             :y="100 - Math.max(c.open, c.close)"
             width="8"
-            :height="Math.max(8, Math.abs(c.close - c.open))"
+            :height="Math.max(6, Math.abs(c.close - c.open))"
             rx="1"
           />
         </g>
 
-        <!-- 金色趋势线 -->
         <polyline
           class="trend-line"
           :points="candles.map(c => `${c.x},${100 - c.close}`).join(' ')"
           fill="none"
-          stroke-width="2"
+          stroke-width="1.8"
         />
       </svg>
 
-      <!-- 浮动行情数字 -->
       <div class="ticker">
-        <span class="up">+2.38%</span>
+        <span class="label">INDEX</span>
         <span class="price">3,842.56</span>
-        <span class="vol">Vol 1.2M</span>
+        <span class="up">+0.48%</span>
       </div>
     </div>
   </div>
@@ -114,11 +102,12 @@ const subtitle = computed(() => props.isRegister ? '注册账户，实时掌握�
 .left-panel {
   display: flex;
   flex-direction: column;
-  justify-content: center;
   height: 100%;
-  padding: 48px 40px;
+  width: 100%;
+  margin: 0;
+  padding: 0;
   color: #fff;
-  background: linear-gradient(160deg, rgba($gold, 0.22) 0%, rgba(15, 15, 25, 0.92) 55%);
+  background: linear-gradient(160deg, #1e3a5f 0%, #0f172a 55%, #111827 100%);
   position: relative;
   overflow: hidden;
 }
@@ -126,38 +115,55 @@ const subtitle = computed(() => props.isRegister ? '注册账户，实时掌握�
 .brand {
   position: relative;
   z-index: 1;
-  margin-bottom: 32px;
+  padding: 40px 36px 20px;
+  flex-shrink: 0;
 
-  .logo {
-    font-size: 36px;
-    margin-bottom: 12px;
-    filter: drop-shadow(0 0 12px rgba($gold, 0.5));
+  .logo-mark {
+    width: 44px;
+    height: 44px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 14px;
+    font-size: 15px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    color: #eff6ff;
+    background: linear-gradient(145deg, #3b82f6, #1d4ed8);
+    box-shadow: 0 8px 20px rgba(37, 99, 235, 0.35);
   }
 
   h2 {
     margin: 0 0 8px;
     font-size: 26px;
     font-weight: 600;
-    letter-spacing: 1px;
+    letter-spacing: 0.5px;
   }
 
   p {
     margin: 0;
     font-size: 14px;
-    color: rgba(255, 255, 255, 0.65);
+    color: rgba(255, 255, 255, 0.68);
     line-height: 1.6;
   }
 }
 
+/* 贴齐左侧栏四边，不再悬浮出一圈空隙 */
 .chart-wrap {
   position: relative;
   z-index: 1;
-  padding: 16px;
-  border-radius: 16px;
-  background: rgba(0, 0, 0, 0.25);
-  border: 1px solid rgba($gold, 0.25);
-  backdrop-filter: blur(8px);
-  margin-bottom: 28px;
+  flex: 1;
+  min-height: 0;
+  margin: 0;
+  padding: 16px 20px 20px;
+  border-radius: 0;
+  border: none;
+  border-top: 1px solid rgba(148, 163, 184, 0.18);
+  background: rgba(15, 23, 42, 0.4);
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
 }
 
 .kline-chart {
@@ -166,48 +172,43 @@ const subtitle = computed(() => props.isRegister ? '注册账户，实时掌握�
   display: block;
 
   .candle {
-    animation: candleIn 0.6s ease backwards;
-    animation-delay: calc(var(--i, 0) * 0.03s);
-
-    &.up line, &.up rect { stroke: $up; fill: $up; }
-    &.down line, &.down rect { stroke: $down; fill: $down; }
+    &.up line,
+    &.up rect {
+      stroke: #f87171;
+      fill: #f87171;
+    }
+    &.down line,
+    &.down rect {
+      stroke: #34d399;
+      fill: #34d399;
+    }
   }
 
   .trend-line {
-    stroke: $gold;
-    filter: url(#glow);
-    stroke-dasharray: 400;
-    stroke-dashoffset: 400;
-    animation: drawLine 2s ease forwards 0.5s;
-  }
-
-  .trend-area {
-    opacity: 0;
-    animation: fadeIn 1s ease forwards 1s;
+    stroke: #93c5fd;
+    opacity: 0.85;
   }
 }
 
 .ticker {
   display: flex;
-  gap: 16px;
+  align-items: center;
+  gap: 14px;
   margin-top: 12px;
   font-size: 13px;
   font-family: 'Consolas', 'Monaco', monospace;
 
-  .up { color: $up; font-weight: 600; }
-  .price { color: $gold; font-weight: 600; }
-  .vol { color: rgba(255,255,255,0.45); }
-}
-
-
-@keyframes drawLine {
-  to { stroke-dashoffset: 0; }
-}
-@keyframes fadeIn {
-  to { opacity: 1; }
-}
-@keyframes candleIn {
-  from { opacity: 0; transform: translateY(8px); }
-  to { opacity: 1; transform: translateY(0); }
+  .label {
+    color: rgba(255, 255, 255, 0.45);
+    letter-spacing: 0.08em;
+  }
+  .up {
+    color: #f87171;
+    font-weight: 600;
+  }
+  .price {
+    color: #e2e8f0;
+    font-weight: 600;
+  }
 }
 </style>

@@ -1,10 +1,14 @@
 ﻿import axios from 'axios';
 import iconv from 'iconv-lite';
 import { query } from '../config/database';
+import { cacheGet, cacheSet } from '../config/redis';
+import { config } from '../config';
 import { toDateStr } from '../utils/date';
 import type { IndexItem, KLineItem, QuoteData } from '@shared/types/dashboard';
 
 export type { QuoteData };
+
+const QUOTE_TTL = () => config.redis.quoteTtlSeconds;
 
 const SINA_QUOTE_URL = 'https://hq.sinajs.cn/list=';
 
@@ -38,6 +42,13 @@ function formatSinaCode(code: string, market?: string): string {
   const m = market || STOCK_META[code]?.market || (code.startsWith('6') || code.startsWith('5') ? 'SH' : 'SZ');
   return `${m === 'SH' ? 'sh' : 'sz'}${code}`;
 }
+
+const cacheKey = {
+  quote: (code: string, market?: string) =>
+    `fs:quote:${formatSinaCode(code, market)}`,
+  indices: 'fs:indices:main',
+  batch: (codes: string[]) => `fs:batch:${codes.slice().sort().join(',')}`,
+};
 
 // 格式化东方财富股票代码
 function toEastMoneySecId(code: string): string {
@@ -87,6 +98,9 @@ function parseSinaIndex(raw: string, code: string, name: string): IndexItem | nu
 
 //获取市场指数数据
 export async function getMarketIndices(): Promise<IndexItem[]> {
+  const cached = await cacheGet<IndexItem[]>(cacheKey.indices);
+  if (cached?.length) return cached;
+
   const indices = [
     { code: 's_sh000001', name: '上证指数' },
     { code: 's_sz399001', name: '深证成指' },
@@ -99,7 +113,10 @@ export async function getMarketIndices(): Promise<IndexItem[]> {
     const parsed = indices
       .map((idx, i) => parseSinaIndex(lines[i] || '', idx.code, idx.name))
       .filter((x): x is IndexItem => x !== null);
-    if (parsed.length) return parsed;
+    if (parsed.length) {
+      await cacheSet(cacheKey.indices, parsed, QUOTE_TTL());
+      return parsed;
+    }
   } catch {
     /* fallback */
   }
@@ -115,10 +132,17 @@ export async function getStockQuote(code: string, market?: string): Promise<Quot
 
 /** 仅真实新浪行情，失败返回 null（不算 mock） */
 export async function getLiveQuote(code: string, market?: string): Promise<QuoteData | null> {
+  const key = cacheKey.quote(code, market);
+  const cached = await cacheGet<QuoteData>(key);
+  if (cached && cached.price > 0) return cached;
+
   try {
     const text = await fetchSinaText(formatSinaCode(code, market));
     const quote = parseSinaQuote(text, code);
-    if (quote && quote.price > 0) return quote;
+    if (quote && quote.price > 0) {
+      await cacheSet(key, quote, QUOTE_TTL());
+      return quote;
+    }
   } catch {
     /* network / parse fail */
   }
@@ -130,6 +154,10 @@ export async function getBatchQuotes(
   stocks: { code: string; market?: string; name?: string }[]
 ): Promise<QuoteData[]> {
   if (stocks.length === 0) return [];
+  const batchKey = cacheKey.batch(stocks.map((s) => formatSinaCode(s.code, s.market)));
+  const cached = await cacheGet<QuoteData[]>(batchKey);
+  if (cached?.length) return cached;
+
   try {
     const text = await fetchSinaText(
       stocks.map((s) => formatSinaCode(s.code, s.market)).join(','),
@@ -139,7 +167,17 @@ export async function getBatchQuotes(
     const parsed = stocks
       .map((s, i) => parseSinaQuote(lines[i] || '', s.code))
       .filter((x): x is QuoteData => x !== null && x.price > 0);
-    if (parsed.length) return parsed;
+    if (parsed.length) {
+      await cacheSet(batchKey, parsed, QUOTE_TTL());
+      // 同步单票缓存，供 getLiveQuote 复用
+      await Promise.all(
+        parsed.map((q) => {
+          const stock = stocks.find((s) => s.code === q.code);
+          return cacheSet(cacheKey.quote(q.code, stock?.market), q, QUOTE_TTL());
+        })
+      );
+      return parsed;
+    }
   } catch {
     /* fallback */
   }

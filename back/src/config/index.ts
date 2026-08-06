@@ -31,4 +31,14 @@ export const config = {
     newsDays: Number(process.env.NEWS_RETENTION_DAYS) || 90,
     sentimentAggregateDays: Number(process.env.SENTIMENT_AGGREGATE_RETENTION_DAYS) || 180,
   },
+  /** 可选：行情短时缓存；Redis 挂了会自动降级直连外网 */
+  redis: {
+    enabled: process.env.REDIS_ENABLED !== 'false',
+    host: process.env.REDIS_HOST || '127.0.0.1',
+    port: Number(process.env.REDIS_PORT) || 6379,
+    password: process.env.REDIS_PASSWORD || '',
+    db: Number(process.env.REDIS_DB) || 0,
+    /** 实时报价 / 指数 TTL（秒） */
+    quoteTtlSeconds: Number(process.env.REDIS_QUOTE_TTL) || 20,
+  },
 }

@@ -284,11 +284,11 @@ onBeforeUnmount(() => {
 
 .note-meta {
   font-size: 12px;
-  color: #999;
+  color: var(--fs-text-muted);
 }
 
 .t-list-item.active {
-  background: #ecf2fe;
+  background: var(--fs-bg-muted-hover);
 }
 
 .editor-toolbar {
@@ -300,10 +300,10 @@ onBeforeUnmount(() => {
 .variables-panel {
   margin-top: 12px;
   padding: 8px 12px;
-  background: #f9fafb;
+  background: var(--fs-bg-muted);
   border-radius: 6px;
   font-size: 13px;
-  color: #666;
+  color: var(--fs-text-secondary);
 }
 
 .stock-picker {
@@ -314,8 +314,10 @@ onBeforeUnmount(() => {
 
 .note-editor {
   min-height: 280px;
-  border: 1px solid #eee;
+  border: 1px solid var(--fs-border);
   border-radius: 8px;
   padding: 12px;
+  background: var(--fs-bg-surface);
+  color: var(--fs-text-primary);
 }
 </style>

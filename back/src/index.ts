@@ -5,6 +5,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import { config } from './config';
 import { testDatabaseConnection } from './config/database';
+import { initRedis, testRedisConnection } from './config/redis';
 import authRoutes from './routes/authRoutes';
 import dashboardRoutes from './routes/dashboard';
 import stockRoutes from './routes/stock';
@@ -36,6 +37,7 @@ app.use('/uploads', express.static(path.resolve(__dirname, '../storage')));
 
 app.get('/api/health', async (_req, res) => {
   const db = await testDatabaseConnection();
+  const redis = await testRedisConnection();
   const market = await probeMarketSource();
   const llm = await probeLLM();
   const ok = db.ok;
@@ -44,6 +46,7 @@ app.get('/api/health', async (_req, res) => {
     service: 'finsight-ai',
     version: '1.1',
     database: db,
+    redis,
     market,
     llm,
   });
@@ -75,6 +78,7 @@ app.use(
 
 app.listen(config.port, async () => {
   console.log(`🚀 FinSight-AI 后端已启动: http://localhost:${config.port}`);
+  await initRedis();
   const db = await testDatabaseConnection();
   if (db.ok) {
     console.log('✅', db.message);

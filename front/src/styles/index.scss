@@ -1,5 +1,6 @@
 @use './variable.scss' as *;
 @use './reset.scss';
+@use './theme.scss';
 
 // 锁定视口高度，避免出现页面级双滚动条
 html,

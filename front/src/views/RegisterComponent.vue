@@ -1,6 +1,19 @@
 <template>
   <div class="auth-page">
-    <CoinBallpit class="auth-bg" :count="40" />
+    <LoginBackground class="auth-bg" />
+    <t-button
+      class="theme-toggle"
+      theme="default"
+      variant="outline"
+      shape="round"
+      size="small"
+      @click="themeStore.toggle()"
+    >
+      <template #icon>
+        <t-icon :name="themeStore.isDark ? 'sunny' : 'moon'" />
+      </template>
+      {{ themeStore.isDark ? '浅色' : '暗黑' }}
+    </t-button>
     <div class="auth-card">
       <div class="auth-header">
         <h1>注册账号</h1>
@@ -36,10 +49,12 @@ import { useRouter } from 'vue-router';
 import { MessagePlugin } from 'tdesign-vue-next';
 import { authApi } from '@/api';
 import { useUserStore } from '@/stores/userStore';
-import CoinBallpit from '@/components/CoinBallpit.vue';
+import { useThemeStore } from '@/stores/themeStore';
+import LoginBackground from '@/components/LoginBackground.vue';
 
 const router = useRouter();
 const userStore = useUserStore();
+const themeStore = useThemeStore();
 const loading = ref(false);
 
 const form = reactive({
@@ -76,7 +91,7 @@ async function onSubmit({ validateResult }: { validateResult: boolean }) {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, #1a2744 0%, #0f1a30 50%, #162544 100%);
+  background: var(--fs-market-bg);
   overflow: hidden;
 }
 
@@ -84,14 +99,25 @@ async function onSubmit({ validateResult }: { validateResult: boolean }) {
   z-index: 0;
 }
 
+.theme-toggle {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  z-index: 2;
+  background: var(--fs-bg-surface) !important;
+  border-color: var(--fs-border) !important;
+  color: var(--fs-text-primary) !important;
+}
+
 .auth-card {
   position: relative;
   z-index: 1;
   width: 420px;
   padding: 40px;
-  background: #fff;
-  border-radius: 12px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
+  background: var(--fs-bg-surface);
+  border: 1px solid var(--fs-border);
+  border-radius: 16px;
+  box-shadow: 0 18px 40px rgba(15, 23, 42, 0.12);
 }
 
 .auth-header {
@@ -101,16 +127,21 @@ async function onSubmit({ validateResult }: { validateResult: boolean }) {
 
 .auth-header h1 {
   font-size: 24px;
-  color: #0052d9;
+  color: var(--fs-brand);
+}
+
+.auth-header p {
+  margin-top: 8px;
+  color: var(--fs-text-secondary);
 }
 
 .auth-footer {
   text-align: center;
   margin-top: 16px;
-  color: #666;
+  color: var(--fs-text-secondary);
 }
 
 .auth-footer a {
-  color: #0052d9;
+  color: var(--fs-brand);
 }
 </style>

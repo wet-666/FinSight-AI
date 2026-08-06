@@ -287,8 +287,26 @@ function renderKLine(kline: KLineItem[]) {
       { left: 72, right: 28, top: '72%', height: '18%', containLabel: false },
     ],
     xAxis: [
-      { type: 'category', data: dates, gridIndex: 0, axisLabel: { hideOverlap: true } },
-      { type: 'category', data: dates, gridIndex: 1, axisLabel: { hideOverlap: true } },
+      {
+        type: 'category',
+        data: dates,
+        gridIndex: 0,
+        axisLabel: {
+          hideOverlap: true,
+          interval: (index: number) =>
+            index === 0 || index === dates.length - 1 || index % 7 === 0,
+        },
+      },
+      {
+        type: 'category',
+        data: dates,
+        gridIndex: 1,
+        axisLabel: {
+          hideOverlap: true,
+          interval: (index: number) =>
+            index === 0 || index === dates.length - 1 || index % 7 === 0,
+        },
+      },
     ],
     yAxis: [
       { scale: true, gridIndex: 0, splitNumber: 4 },
@@ -587,16 +605,16 @@ onUnmounted(() => {
 }
 .report-content {
   line-height: 1.8;
-  color: #333;
+  color: var(--fs-text-primary);
 }
 .report-content :deep(.cite-mark) {
-  background: #fff3cd;
-  color: #8a6d3b;
+  background: var(--fs-warning-bg);
+  color: var(--fs-warning-text);
   padding: 0 4px;
   border-radius: 3px;
 }
 .evidence-summary {
-  color: #555;
+  color: var(--fs-text-secondary);
   margin: 0 0 12px;
   font-size: 13px;
 }
@@ -604,17 +622,18 @@ onUnmounted(() => {
   margin-bottom: 12px;
 }
 .stage-card {
-  background: #f7f8fa;
+  background: var(--fs-bg-soft);
+  color: var(--fs-text-primary);
   padding: 10px 12px;
   border-radius: 6px;
 }
 .stage-card.is-running {
-  border-left: 3px solid #0052d9;
+  border-left: 3px solid var(--fs-brand);
 }
 .stage-status {
   margin: 0 0 4px;
   font-size: 12px;
-  color: #888;
+  color: var(--fs-text-secondary);
 }
 .stage-summary {
   margin: 0 0 6px;
@@ -622,7 +641,7 @@ onUnmounted(() => {
 }
 .meta {
   margin: 0;
-  color: #666;
+  color: var(--fs-text-secondary);
   font-size: 13px;
 }
 .chart-box {
@@ -635,7 +654,7 @@ onUnmounted(() => {
 }
 .hint {
   margin: 0 0 12px;
-  color: #888;
+  color: var(--fs-text-secondary);
   font-size: 13px;
 }
 .cite-grid {
@@ -645,8 +664,9 @@ onUnmounted(() => {
 }
 .cite-card {
   text-align: left;
-  border: 1px solid #e7e7e7;
-  background: #fff;
+  border: 1px solid var(--fs-border);
+  background: var(--fs-bg-surface);
+  color: var(--fs-text-primary);
   border-radius: 8px;
   padding: 10px 12px;
   cursor: pointer;
@@ -654,8 +674,8 @@ onUnmounted(() => {
 }
 .cite-card:hover,
 .cite-card.active {
-  border-color: #0052d9;
-  box-shadow: 0 0 0 2px rgba(0, 82, 217, 0.08);
+  border-color: var(--fs-brand);
+  box-shadow: 0 0 0 2px var(--fs-brand-soft);
 }
 .cite-head {
   display: flex;
@@ -666,7 +686,7 @@ onUnmounted(() => {
 }
 .cite-id {
   font-size: 12px;
-  color: #0052d9;
+  color: var(--fs-brand);
   font-family: ui-monospace, monospace;
 }
 .cite-title {
@@ -677,7 +697,7 @@ onUnmounted(() => {
 }
 .cite-snippet {
   font-size: 12px;
-  color: #666;
+  color: var(--fs-text-secondary);
   line-height: 1.5;
 }
 .ask-list {
@@ -708,12 +728,12 @@ onUnmounted(() => {
   font-size: 13px;
 }
 .ask-msg.user .ask-bubble {
-  background: #0052d9;
+  background: var(--fs-brand);
   color: #fff;
 }
 .ask-msg.assistant .ask-bubble {
-  background: #f3f3f3;
-  color: #333;
+  background: var(--fs-bg-chip);
+  color: var(--fs-text-primary);
 }
 .ask-cites {
   display: flex;

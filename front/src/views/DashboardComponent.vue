@@ -387,18 +387,20 @@ onUnmounted(() => {
 .index-card {
   text-align: center;
   padding: 12px;
-  background: #f9fafb;
+  background: var(--fs-bg-muted);
+  color: var(--fs-text-primary);
   border-radius: 8px;
 }
 .index-name {
   font-size: 13px;
-  color: #666;
+  color: var(--fs-text-secondary);
   margin-bottom: 4px;
 }
 .index-price {
   font-size: 20px;
   font-weight: 600;
   margin-bottom: 4px;
+  color: var(--fs-text-primary);
 }
 .thermometer-header {
   display: flex;
@@ -409,11 +411,11 @@ onUnmounted(() => {
 }
 .thermo-desc {
   font-size: 12px;
-  color: #888;
+  color: var(--fs-text-secondary);
   line-height: 1.5;
 }
 .score {
-  color: #666;
+  color: var(--fs-text-secondary);
   font-size: 13px;
 }
 .news-list {
@@ -422,7 +424,7 @@ onUnmounted(() => {
 }
 .news-item {
   padding: 12px 0;
-  border-bottom: 1px solid #f0f0f0;
+  border-bottom: 1px solid var(--fs-border-soft);
 }
 .news-title {
   font-weight: 500;
@@ -430,16 +432,16 @@ onUnmounted(() => {
 }
 .news-link {
   display: inline-block;
-  color: #1d2129;
+  color: var(--fs-text-strong);
   text-decoration: none;
 }
 .news-link:hover {
-  color: #0052d9;
+  color: var(--fs-brand);
   text-decoration: underline;
 }
 .news-open {
   font-size: 12px;
-  color: #0052d9;
+  color: var(--fs-brand);
   text-decoration: none;
 }
 .news-open:hover {
@@ -447,7 +449,7 @@ onUnmounted(() => {
 }
 .news-summary {
   font-size: 13px;
-  color: #666;
+  color: var(--fs-text-secondary);
   margin-bottom: 6px;
 }
 .news-meta {
@@ -457,6 +459,6 @@ onUnmounted(() => {
 }
 .news-source {
   font-size: 12px;
-  color: #999;
+  color: var(--fs-text-muted);
 }
 </style>

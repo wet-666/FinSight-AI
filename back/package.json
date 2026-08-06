@@ -8,7 +8,8 @@
     "build": "tsc",
     "start": "node dist/index.js",
     "seed": "tsx src/script/seed.ts",
-    "check-db": "tsx src/script/check-db.ts"
+    "check-db": "tsx src/script/check-db.ts",
+    "check-redis": "tsx src/script/check-redis.ts"
   },
   "dependencies": {
     "@langchain/core": "^0.3.0",
@@ -20,6 +21,7 @@
     "dotenv": "^16.4.0",
     "express": "^4.21.0",
     "iconv-lite": "^0.7.3",
+    "ioredis": "^5.11.1",
     "jsonwebtoken": "^9.0.2",
     "langchain": "^0.3.0",
     "mysql2": "^3.11.0",

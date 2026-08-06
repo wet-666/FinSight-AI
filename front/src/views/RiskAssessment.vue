@@ -192,7 +192,7 @@ onMounted(loadProfile);
   display: inline-block;
   text-align: left;
   margin: 8px 0 0;
-  color: #666;
+  color: var(--fs-text-secondary);
   font-size: 14px;
   line-height: 1.8;
 }

@@ -282,13 +282,22 @@ async function loadKline(code: string) {
       text: `${code} K线  ${first} ~ ${last}`,
       left: 0,
       top: 0,
-      textStyle: { fontSize: 13, color: '#666', fontFamily: 'Microsoft YaHei, PingFang SC, sans-serif' },
+      textStyle: {
+        fontSize: 13,
+        color: getComputedStyle(document.documentElement).getPropertyValue('--fs-text-secondary').trim() || '#666',
+        fontFamily: 'Microsoft YaHei, PingFang SC, sans-serif',
+      },
     },
     grid: { left: 64, right: 20, top: 40, bottom: 28 },
     xAxis: {
       type: 'category',
       data: kline.map((k) => (k.date.length >= 10 ? k.date.slice(5, 10) : k.date)),
-      axisLabel: { hideOverlap: true },
+      axisLabel: {
+        hideOverlap: true,
+        // 避免末尾日期被挤掉，看起来像“标题变了、K线还停在旧日期”
+        interval: (index: number) =>
+          index === 0 || index === kline.length - 1 || index % 7 === 0,
+      },
     },
     yAxis: { scale: true },
     tooltip: {
@@ -437,12 +446,12 @@ onUnmounted(() => {
 .pnl-hint {
   margin: 10px 0 0;
   font-size: 12px;
-  color: #888;
+  color: var(--fs-text-secondary);
 }
 
 .hint {
   font-size: 12px;
-  color: #999;
+  color: var(--fs-text-muted);
 }
 
 .position-item {
@@ -451,7 +460,8 @@ onUnmounted(() => {
   gap: 8px;
   padding: 10px 12px;
   margin-bottom: 8px;
-  background: #f9fafb;
+  background: var(--fs-bg-muted);
+  color: var(--fs-text-primary);
   border-radius: 8px;
   cursor: pointer;
   border: 1px solid transparent;
@@ -460,13 +470,13 @@ onUnmounted(() => {
 
 .position-item:hover,
 .position-item.active {
-  background: #ecf2fe;
-  border-color: #0052d9;
+  background: var(--fs-bg-muted-hover);
+  border-color: var(--fs-brand);
 }
 
 .drag-handle {
   cursor: grab;
-  color: #999;
+  color: var(--fs-text-muted);
   flex-shrink: 0;
 }
 
@@ -478,11 +488,12 @@ onUnmounted(() => {
 .pos-name {
   font-weight: 500;
   font-size: 14px;
+  color: var(--fs-text-primary);
 }
 
 .pos-detail {
   font-size: 12px;
-  color: #666;
+  color: var(--fs-text-secondary);
   margin-top: 2px;
 }
 
@@ -504,7 +515,7 @@ onUnmounted(() => {
 
 .pos-pnl-label {
   font-size: 11px;
-  color: #999;
+  color: var(--fs-text-muted);
   margin-top: 2px;
 }
 
@@ -542,7 +553,8 @@ onUnmounted(() => {
 .scenario-card {
   padding: 12px;
   border-radius: 8px;
-  background: #f9fafb;
+  background: var(--fs-bg-muted);
+  color: var(--fs-text-primary);
   min-height: 120px;
 }
 
@@ -551,7 +563,7 @@ onUnmounted(() => {
 }
 
 .scenario-1 {
-  border-left: 3px solid #0052d9;
+  border-left: 3px solid var(--fs-brand);
 }
 
 .scenario-2 {
@@ -565,26 +577,26 @@ onUnmounted(() => {
 
 .scenario-prob {
   font-size: 12px;
-  color: #666;
+  color: var(--fs-text-secondary);
 }
 
 .scenario-range {
   font-size: 16px;
   font-weight: 600;
   margin: 6px 0;
-  color: #0052d9;
+  color: var(--fs-brand);
 }
 
 .scenario-desc {
   font-size: 12px;
-  color: #666;
+  color: var(--fs-text-secondary);
   line-height: 1.5;
 }
 
 .disclaimer-text {
   margin-top: 12px;
   font-size: 12px;
-  color: #999;
+  color: var(--fs-text-muted);
   line-height: 1.6;
 }
 </style>
