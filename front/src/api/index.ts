@@ -26,7 +26,11 @@ export const authApi = {
   },
   updateProfile: (data: { nickname?: string; avatar?: string }) =>
     http.put('/auth/profile', data),
-  uploadAvatar: (dataUrl: string) => http.post('/auth/avatar', { dataUrl }),
+  uploadAvatar: (file: File) => {
+    const form = new FormData();
+    form.append('avatar', file);
+    return http.post('/auth/avatar', form);
+  },
   changePassword: (data: { oldPassword: string; newPassword: string }) =>
     http.put('/auth/password', data),
   getWatchlist: () => http.get('/auth/watchlist'),

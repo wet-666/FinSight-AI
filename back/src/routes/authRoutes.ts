@@ -1,9 +1,10 @@
 //接收用户请求，操作数据库，做出具体响应
-import { Router, Response, Request } from 'express'
+import { Router, Response, Request, NextFunction } from 'express'
 import bcrypt from 'bcryptjs'
 import jwt from 'jsonwebtoken'
 import fs from 'fs'
 import path from 'path'
+import multer from 'multer'
 import { query } from '../config/database.js'
 import { config } from '../config/index.js'
 import { asyncHandler } from '../middleware/asyncHandler.js'
@@ -13,6 +14,64 @@ import type { UserRow } from '@shared/types/database'
 
 const router = Router()
 interface UserRowWithPasswordHash extends UserRow {}
+
+const AVATAR_MAX_BYTES = 800 * 1024
+const AVATAR_MIME = new Set(['image/png', 'image/jpeg', 'image/jpg', 'image/webp', 'image/gif'])
+
+function extFromMime(mime: string): string {
+   const m = mime.toLowerCase()
+   if (m.includes('png')) return 'png'
+   if (m.includes('webp')) return 'webp'
+   if (m.includes('gif')) return 'gif'
+   return 'jpg'
+}
+
+const avatarUpload = multer({
+   storage: multer.diskStorage({
+      destination: (_req, _file, cb) => {
+         fs.mkdirSync(AVATAR_DIR, { recursive: true })
+         cb(null, AVATAR_DIR)
+      },
+      filename: (req, file, cb) => {
+         const userId = (req as unknown as AuthRequest).userId
+         cb(null, `u${userId}_${Date.now()}.${extFromMime(file.mimetype)}`)
+      },
+   }),
+   limits: { fileSize: AVATAR_MAX_BYTES, files: 1 },
+   fileFilter: (_req, file, cb) => {
+      if (AVATAR_MIME.has(file.mimetype.toLowerCase())) {
+         cb(null, true)
+         return
+      }
+      cb(new Error('请上传 png/jpg/webp/gif 图片'))
+   },
+})
+
+/** 将 multer 错误转成统一 JSON 响应 */
+function handleAvatarUpload(req: Request, res: Response, next: NextFunction) {
+   // monorepo 下 @types/express 可能重复，这里做一次兼容调用
+   const run = avatarUpload.single('avatar') as unknown as (
+      req: Request,
+      res: Response,
+      cb: (err?: unknown) => void
+   ) => void
+   run(req, res, (err?: unknown) => {
+      if (!err) {
+         next()
+         return
+      }
+      if (err instanceof multer.MulterError) {
+         if (err.code === 'LIMIT_FILE_SIZE') {
+            res.status(400).json(error('头像不能超过 800KB，请压缩后再传'))
+            return
+         }
+         res.status(400).json(error(err.message || '上传失败'))
+         return
+      }
+      const message = err instanceof Error ? err.message : '上传失败'
+      res.status(400).json(error(message))
+   })
+}
 
 //注册
 router.post(
@@ -153,7 +212,7 @@ router.put(
          ]);
       } else if (nickname !== undefined) {
          await query('UPDATE users SET nickname = ? WHERE id = ?', [nickname, req.userId!]);
-      } else {
+      } else if (avatar !== undefined) {
          await query('UPDATE users SET avatar = ? WHERE id = ?', [avatar, req.userId!]);
       }
       const users = await query<UserRowWithPasswordHash[]>(
@@ -164,56 +223,38 @@ router.put(
    })
 )
 
-/** 上传本地头像：接收 base64 data URL，写入文件并把路径存入 users.avatar */
+/** 上传本地头像：multipart 字段名 avatar，落盘后把路径写入 users.avatar */
 router.post(
    '/avatar',
    authMiddleware,
+   handleAvatarUpload,
    asyncHandler(async (req: AuthRequest, res: Response) => {
-      await ensureUsersSchema();
-      const dataUrl = String(req.body?.dataUrl || '');
-      const match = dataUrl.match(/^data:(image\/(png|jpeg|jpg|webp|gif));base64,([A-Za-z0-9+/=]+)$/i);
-      if (!match) {
-         res.status(400).json(error('请上传 png/jpg/webp/gif 图片'));
-         return;
+      await ensureUsersSchema()
+      const file = req.file
+      if (!file) {
+         res.status(400).json(error('请选择要上传的图片'))
+         return
       }
-      const mime = match[1].toLowerCase();
-      const ext = mime.includes('png')
-         ? 'png'
-         : mime.includes('webp')
-           ? 'webp'
-           : mime.includes('gif')
-             ? 'gif'
-             : 'jpg';
-      const buf = Buffer.from(match[3], 'base64');
-      if (buf.length > 800 * 1024) {
-         res.status(400).json(error('头像不能超过 800KB，请压缩后再传'));
-         return;
-      }
-
-      fs.mkdirSync(AVATAR_DIR, { recursive: true });
-      const filename = `u${req.userId}_${Date.now()}.${ext}`;
-      const abs = path.join(AVATAR_DIR, filename);
-      fs.writeFileSync(abs, buf);
 
       // 清理该用户旧头像文件（仅 storage/avatars 下）
       try {
          const prev = await query<{ avatar: string }[]>(
             'SELECT avatar FROM users WHERE id = ?',
             [req.userId!]
-         );
-         const old = prev[0]?.avatar || '';
-         const oldName = old.match(/\/uploads\/avatars\/(u\d+_[^/]+)$/)?.[1];
-         if (oldName) {
-            const oldAbs = path.join(AVATAR_DIR, oldName);
-            if (fs.existsSync(oldAbs)) fs.unlinkSync(oldAbs);
+         )
+         const old = prev[0]?.avatar || ''
+         const oldName = old.match(/\/uploads\/avatars\/(u\d+_[^/]+)$/)?.[1]
+         if (oldName && oldName !== file.filename) {
+            const oldAbs = path.join(AVATAR_DIR, oldName)
+            if (fs.existsSync(oldAbs)) fs.unlinkSync(oldAbs)
          }
       } catch {
          /* ignore */
       }
 
-      const avatarUrl = `/uploads/avatars/${filename}`;
-      await query('UPDATE users SET avatar = ? WHERE id = ?', [avatarUrl, req.userId!]);
-      res.json(success({ avatar: avatarUrl }, '头像已更新'));
+      const avatarUrl = `/uploads/avatars/${file.filename}`
+      await query('UPDATE users SET avatar = ? WHERE id = ?', [avatarUrl, req.userId!])
+      res.json(success({ avatar: avatarUrl }, '头像已更新'))
    })
 )
 

@@ -118,20 +118,20 @@ function pickAvatar() {
   fileInput.value?.click();
 }
 
-function readFileAsDataUrl(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(String(reader.result || ''));
-    reader.onerror = () => reject(new Error('读取文件失败'));
-    reader.readAsDataURL(file);
-  });
+function clearLocalPreview() {
+  if (localPreview.value.startsWith('blob:')) {
+    URL.revokeObjectURL(localPreview.value);
+  }
+  localPreview.value = '';
 }
 
+// 处理头像选择：校验后以 multipart 上传，落盘 URL 写回资料
 async function onPickAvatar(ev: Event) {
   const input = ev.target as HTMLInputElement;
   const file = input.files?.[0];
-  input.value = '';
+  input.value = ''; // 清空input，允许重复选择同一文件
   if (!file) return;
+
   if (!/^image\/(png|jpeg|jpg|webp|gif)$/i.test(file.type)) {
     MessagePlugin.warning('请选择图片文件');
     return;
@@ -140,18 +140,19 @@ async function onPickAvatar(ev: Event) {
     MessagePlugin.warning('图片不能超过 800KB');
     return;
   }
+
   uploading.value = true;
+  clearLocalPreview();
+  localPreview.value = URL.createObjectURL(file);
   try {
-    const dataUrl = await readFileAsDataUrl(file);
-    localPreview.value = dataUrl;
-    const res = await authApi.uploadAvatar(dataUrl);
+    const res = await authApi.uploadAvatar(file);
     const data = res.data as { avatar?: string };
     profileForm.avatar = data.avatar || '';
-    localPreview.value = '';
+    clearLocalPreview();
     await userStore.fetchProfile();
     MessagePlugin.success('头像已上传并保存');
   } catch {
-    localPreview.value = '';
+    clearLocalPreview();
   } finally {
     uploading.value = false;
   }

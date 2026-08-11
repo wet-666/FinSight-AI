@@ -75,6 +75,9 @@ npm run dev:front
 
 更完整的路由见 `back/src/routes/`。
 
+## 在线接口文档：
+-[FinSight-AI API（Apifox）](https://s.apifox.cn/78f5a078-f2eb-40dc-9888-728cca620be6)
+
 ## 配置说明
 
 `back/.env` 常用项：

@@ -9,7 +9,7 @@ export const AVATAR_DIR = path.join(STORAGE_ROOT, 'avatars');
 
 let usersEnsured = false;
 
-/** 头像字段扩成 TEXT，兼容存相对路径或 data URL */
+/** 头像字段扩成 TEXT，存相对路径如 /uploads/avatars/... */
 export async function ensureUsersSchema(): Promise<void> {
   if (usersEnsured) return;
   try {
