@@ -43,6 +43,7 @@ function formatSinaCode(code: string, market?: string): string {
   return `${m === 'SH' ? 'sh' : 'sz'}${code}`;
 }
 
+// 缓存键名
 const cacheKey = {
   quote: (code: string, market?: string) =>
     `fs:quote:${formatSinaCode(code, market)}`,

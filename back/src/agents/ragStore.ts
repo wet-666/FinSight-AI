@@ -104,7 +104,7 @@ function toCitation(doc: NewsDoc, score: number): Citation {
   };
 }
 
-function keywordRetrieve(docs: NewsDoc[], queryText: string, topK: number): RetrieveResult {
+export function keywordRetrieve(docs: NewsDoc[], queryText: string, topK: number): RetrieveResult {
   const ranked = docs
     .map((d) => ({ doc: d, score: keywordScore(queryText, d) }))
     .sort((a, b) => b.score - a.score)

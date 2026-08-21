@@ -3,7 +3,6 @@ import { ref, computed, watch } from 'vue'
 import { MessagePlugin } from 'tdesign-vue-next'
 import { DesktopIcon, LockOnIcon, LoginIcon, RefreshIcon, UserAddIcon } from 'tdesign-icons-vue-next'
 import type { FormProps, FormRules, DialogProps } from 'tdesign-vue-next'
-
 import LoginBackground from '@/components/LoginBackground.vue'
 import LoginLeftPanel from '@/components/LoginLeftPanel.vue'
 import { useWindowSize } from '@vueuse/core'

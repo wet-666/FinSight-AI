@@ -229,7 +229,7 @@ const modeTheme = computed(() => {
 });
 
 const highlightedReport = computed(() => {
-  let html = formatAiText(report.value || '');
+  const html = formatAiText(report.value || '');
   if (!activeCitationId.value) return html;
   const id = activeCitationId.value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   return html.replace(
@@ -250,6 +250,7 @@ function statusLabel(s: string) {
   ] || s;
 }
 
+//
 function extractEvidenceFromStages(nextStages: AgentStage[]) {
   const sentiment = nextStages.find((s) => s.role === 'sentiment_analyst');
   const secretary = nextStages.find((s) => s.role === 'invest_secretary');
@@ -516,6 +517,7 @@ function saveReportToNotes() {
     path: '/notes',
     query: { stockCode, stockName: stockName.value },
   });
+
 }
 
 async function sendAsk() {

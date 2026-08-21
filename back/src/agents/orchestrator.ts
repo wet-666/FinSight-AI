@@ -1,4 +1,4 @@
-import { execute, query } from '../config/database';
+import { execute } from '../config/database';
 import { getKLine, getStockQuote } from '../services/marketService';
 import { getStockSentimentHistory } from '../services/sentimentService';
 import { getLLM } from './llm';
@@ -7,6 +7,7 @@ import { runSentimentAgent } from './sentimentAgent';
 import { runQuantAgent } from './quantAgent';
 import { runSecretaryAgent } from './secretaryAgent';
 import { ensureAgentRunsSchema } from './ensureSchema';
+import { resolveOrchestratorMode } from './orchestratorMode';
 import type { AgentStage, OrchestratorResult } from './types';
 
 export type ProgressEvent =
@@ -182,8 +183,7 @@ export async function runResearchOrchestrator(params: {
     await onProgress?.({ type: 'stage', stage: { ...stages[2] }, index: 2 });
 
     const llmHits = [sentiment, quant, secretary].filter((x) => x.llmEnhanced).length;
-    const resultMode: OrchestratorResult['mode'] =
-      mode === 'llm' && llmHits === 0 ? 'llm_fallback' : mode;
+    const resultMode = resolveOrchestratorMode(mode, llmHits);
 
     const result: OrchestratorResult = {
       stockCode,

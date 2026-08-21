@@ -9,7 +9,9 @@
     "start": "node dist/index.js",
     "seed": "tsx src/script/seed.ts",
     "check-db": "tsx src/script/check-db.ts",
-    "check-redis": "tsx src/script/check-redis.ts"
+    "check-redis": "tsx src/script/check-redis.ts",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "dependencies": {
     "@langchain/core": "^0.3.0",
@@ -39,6 +41,7 @@
     "@types/node-cron": "^3.0.11",
     "@types/uuid": "^10.0.0",
     "nodemon": "^3.1.14",
-    "tsx": "^4.19.0"
+    "tsx": "^4.19.0",
+    "vitest": "^4.1.11"
   }
 }

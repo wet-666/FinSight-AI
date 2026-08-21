@@ -4,21 +4,10 @@ import { runResearchOrchestrator } from '../agents/orchestrator';
 import { answerFollowup } from '../agents/followupAsk';
 import { ensureAgentRunsSchema } from '../agents/ensureSchema';
 import { execute, query } from '../config/database';
+import { parseStages } from '../agents/parseStages';
 import type { AgentStage } from '../agents/types';
 
 const router = Router();
-
-function parseStages(raw: unknown): AgentStage[] {
-  if (Array.isArray(raw)) return raw as AgentStage[];
-  if (typeof raw === 'string') {
-    try {
-      return JSON.parse(raw) as AgentStage[];
-    } catch {
-      return [];
-    }
-  }
-  return [];
-}
 
 function normalizeStatus(status: unknown): string {
   return String(status || '').trim().toLowerCase();

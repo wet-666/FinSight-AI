@@ -6,6 +6,7 @@ import { getStockSentimentHistory } from '../services/sentimentService';
 import { runResearchOrchestrator } from '../agents/orchestrator';
 import { createResearchReport } from '../services/reportService';
 import { LEGAL_DISCLAIMER } from '../agents/types';
+import { formatSseEvent } from '../utils/sse';
 
 const router = Router();
 
@@ -126,7 +127,7 @@ router.post(
     res.flushHeaders?.();
 
     const send = (payload: unknown) => {
-      res.write(`data: ${JSON.stringify(payload)}\n\n`);
+      res.write(formatSseEvent(payload));
     };
 
     try {

@@ -14,7 +14,8 @@
     "build:back": "npm run build -w finsight-ai-serve",
     "build:front": "npm run build -w finsight-ai",
     "type-check": "npm run type-check -w finsight-ai",
-    "type-check:back": "npm run build -w finsight-ai-serve --if-present"
+    "type-check:back": "npm run build -w finsight-ai-serve --if-present",
+    "test": "npm run test -w finsight-ai-serve"
   },
   "devDependencies": {
     "@types/pdfkit": "^0.17.6",
