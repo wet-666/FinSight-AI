@@ -20,7 +20,7 @@ body,
 }
 
 // TDesign 栅格负 margin 在窄屏下偶发横向溢出
-.page-container :deep(.t-row) {
+.page-container .t-row {
   max-width: 100%;
 }
 
