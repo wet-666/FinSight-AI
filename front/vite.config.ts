@@ -37,6 +37,7 @@ export default defineConfig(({ command }) => ({
   css: {
     preprocessorOptions: {
       scss: {
+        api: 'modern',
         additionalData: '@use "@/styles/variable.scss" as *;',
       },
     },
