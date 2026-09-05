@@ -1,0 +1,35 @@
+# Render Blueprint：用 GitHub 仓库一键导入后端
+# https://dashboard.render.com/blueprints
+services:
+  - type: web
+    name: finsight-ai-api
+    runtime: node
+    plan: free
+    region: singapore
+    buildCommand: npm install --include=dev && npm run build:back
+    startCommand: npm run start --workspace=finsight-ai-serve
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+      - key: REDIS_ENABLED
+        value: "false"
+      - key: JWT_SECRET
+        generateValue: true
+      - key: JWT_EXPIRES_IN
+        value: 7d
+      - key: DB_PORT
+        value: "3306"
+      - key: DB_NAME
+        value: FinSightAI
+      - key: OPENAI_BASE_URL
+        value: https://api.siliconflow.cn/v1
+      - key: OPENAI_MODEL
+        value: deepseek-ai/DeepSeek-V3
+      - key: DB_HOST
+        sync: false
+      - key: DB_USER
+        sync: false
+      - key: DB_PASSWORD
+        sync: false
+      - key: OPENAI_API_KEY
+        sync: false

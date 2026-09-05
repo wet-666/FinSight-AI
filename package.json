@@ -12,6 +12,7 @@
     "dev": "npm run dev:back & npm run dev:front",
     "seed": "npm run seed -w finsight-ai-serve",
     "build:back": "npm run build -w finsight-ai-serve",
+    "start:back": "npm run start -w finsight-ai-serve",
     "build:front": "npm run build -w finsight-ai",
     "type-check": "npm run type-check -w finsight-ai",
     "type-check:back": "npm run build -w finsight-ai-serve --if-present",
