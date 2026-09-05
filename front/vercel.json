@@ -1,4 +1,8 @@
 {
+  "framework": "vite",
+  "installCommand": "npm install --prefix=..",
+  "buildCommand": "npm run build-only",
+  "outputDirectory": "dist",
   "rewrites": [
     { "source": "/((?!api/|uploads/).*)", "destination": "/index.html" }
   ]
