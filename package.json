@@ -26,6 +26,9 @@
   },
   "allowScripts": {
     "esbuild": true,
-    "@parcel/watcher": true
+    "@parcel/watcher": true,
+    "sass-embedded": true,
+    "sass-embedded-linux-x64": true,
+    "sass-embedded-linux-musl-x64": true
   }
 }
