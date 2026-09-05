@@ -1,0 +1,15 @@
+node_modules
+**/node_modules
+**/dist
+.git
+.github
+front/src
+front/public
+front/dist
+**/*.md
+**/*.spec.ts
+back/tests
+.env
+**/.env
+**/.env.*
+!back/.env.example

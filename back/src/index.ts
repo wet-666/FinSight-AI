@@ -76,8 +76,8 @@ app.use(
   }
 );
 
-app.listen(config.port, async () => {
-  console.log(`🚀 FinSight-AI 后端已启动: http://localhost:${config.port}`);
+app.listen(config.port, '0.0.0.0', async () => {
+  console.log(`🚀 FinSight-AI 后端已启动: http://0.0.0.0:${config.port}`);
   await initRedis();
   const db = await testDatabaseConnection();
   if (db.ok) {

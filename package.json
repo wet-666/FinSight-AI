@@ -31,5 +31,8 @@
     "sass-embedded": true,
     "sass-embedded-linux-x64": true,
     "sass-embedded-linux-musl-x64": true
+  },
+  "engines": {
+    "node": ">=22.18.0"
   }
 }
