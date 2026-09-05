@@ -1,6 +1,6 @@
 {
   "framework": "vite",
-  "installCommand": "npm install --prefix=..",
+  "installCommand": "npm install --prefix=.. --ignore-scripts=false",
   "buildCommand": "npm run build-only",
   "outputDirectory": "dist",
   "rewrites": [

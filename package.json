@@ -23,5 +23,9 @@
   },
   "dependencies": {
     "pdfkit": "^0.19.1"
+  },
+  "allowScripts": {
+    "esbuild": true,
+    "@parcel/watcher": true
   }
 }
