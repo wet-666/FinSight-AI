@@ -42,7 +42,7 @@ app.get('/api/health', async (_req, res) => {
   res.status(ok ? 200 : 503).json({
     status: ok ? 'ok' : 'degraded',
     service: 'finsight-ai',
-    version: '1.1',
+    version: '1.2',
     database: db,
     dbTarget: {
       host: dbTarget.host,
@@ -53,6 +53,26 @@ app.get('/api/health', async (_req, res) => {
       envKeys: Object.keys(process.env)
         .filter((key) => /^(DB_|MYSQL|REDIS_ENABLED|RAILWAY_)/i.test(key))
         .sort(),
+      envStatus: Object.fromEntries(
+        [
+          'DB_HOST',
+          'DB_NAME',
+          'DB_PASSWORD',
+          'DB_PORT',
+          'DB_USER',
+          'MYSQLHOST',
+          'MYSQLPORT',
+          'MYSQLUSER',
+          'MYSQLPASSWORD',
+          'MYSQLDATABASE',
+          'MYSQL_DATABASE',
+          'MYSQL_URL',
+        ].map((key) => {
+          if (!(key in process.env)) return [key, 'missing'];
+          if (!process.env[key]?.trim()) return [key, 'empty'];
+          return [key, 'set'];
+        })
+      ),
     },
     redis,
     market,

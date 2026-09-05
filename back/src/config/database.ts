@@ -9,8 +9,9 @@ dns.setDefaultResultOrder('ipv6first');
 const dbHost = readEnv('DB_HOST', 'MYSQLHOST') || 'localhost';
 const dbPort = Number(readEnv('DB_PORT', 'MYSQLPORT')) || 3306;
 const dbUser = readEnv('DB_USER', 'MYSQLUSER') || 'root';
-const dbName = readEnv('DB_NAME', 'MYSQLDATABASE') || 'FinSightAI';
+const dbName = readEnv('DB_NAME', 'MYSQLDATABASE', 'MYSQL_DATABASE') || 'FinSightAI';
 const dbUrl = readEnv('DATABASE_URL', 'MYSQL_URL', 'MYSQLURL');
+const dbPassword = readEnv('DB_PASSWORD', 'MYSQLPASSWORD', 'MYSQL_ROOT_PASSWORD');
 
 export const dbTarget = {
   host: dbHost,
@@ -33,7 +34,7 @@ const pool = dbUrl
       host: dbHost,
       port: dbPort,
       user: dbUser,
-      password: process.env.DB_PASSWORD || process.env.MYSQLPASSWORD || '',
+      password: dbPassword,
       database: dbName,
       charset: 'utf8mb4',
       decimalNumbers: true,
