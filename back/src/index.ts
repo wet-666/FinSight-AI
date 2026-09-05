@@ -42,8 +42,11 @@ app.get('/api/health', async (_req, res) => {
   res.status(ok ? 200 : 503).json({
     status: ok ? 'ok' : 'degraded',
     service: 'finsight-ai',
-    version: '1.2',
+    version: '1.3',
     database: db,
+    nextStep: !db.ok && isRailway() && !process.env.DB_PASSWORD?.trim()
+      ? '在 finsight-ai-api → Variables 用纯文本添加 DB_PASSWORD（从 MySQL 卡复制 MYSQLPASSWORD），不要点 {}，保存后等自动部署'
+      : undefined,
     dbTarget: {
       host: dbTarget.host,
       port: dbTarget.port,

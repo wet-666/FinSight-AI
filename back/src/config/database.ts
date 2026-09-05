@@ -1,15 +1,19 @@
 //数据库连接与操作封装模块
 import dns from 'node:dns';
 import mysql, { RowDataPacket } from 'mysql2/promise';
-import { readEnv } from './env';
+import { isRailway, readEnv } from './env';
 
 // Railway 内网是 IPv6；Node 默认先走 IPv4 会 ECONNREFUSED
 dns.setDefaultResultOrder('ipv6first');
 
-const dbHost = readEnv('DB_HOST', 'MYSQLHOST') || 'localhost';
+const railway = isRailway();
+const dbHost =
+  readEnv('DB_HOST', 'MYSQLHOST') || (railway ? 'mysql.railway.internal' : 'localhost');
 const dbPort = Number(readEnv('DB_PORT', 'MYSQLPORT')) || 3306;
 const dbUser = readEnv('DB_USER', 'MYSQLUSER') || 'root';
-const dbName = readEnv('DB_NAME', 'MYSQLDATABASE', 'MYSQL_DATABASE') || 'FinSightAI';
+const rawDbName = readEnv('DB_NAME', 'MYSQLDATABASE', 'MYSQL_DATABASE');
+const dbName =
+  railway && (!rawDbName || rawDbName === 'FinSightAI') ? 'railway' : rawDbName || 'FinSightAI';
 const dbUrl = readEnv('DATABASE_URL', 'MYSQL_URL', 'MYSQLURL');
 const dbPassword = readEnv('DB_PASSWORD', 'MYSQLPASSWORD', 'MYSQL_ROOT_PASSWORD');
 
@@ -41,6 +45,7 @@ const pool = dbUrl
       waitForConnections: true,
       connectionLimit: 10,
       queueLimit: 0,
+      ...(railway ? { enableKeepAlive: true } : {}),
     });
 
 export default pool;
@@ -59,13 +64,15 @@ function toFriendlyDbError(err: unknown): DatabaseError {
   const e = err as { code?: string; errno?: number; sqlMessage?: string };
   if (e.code === 'ER_ACCESS_DENIED_ERROR') {
     return new DatabaseError(
-      '数据库连接失败：用户名或密码错误，请检查 back/.env 中的 DB_USER 和 DB_PASSWORD',
+      railway
+        ? '数据库已连通，但密码不对。请在 finsight-ai-api → Variables 用纯文本填写 DB_PASSWORD（从 MySQL 卡复制 MYSQLPASSWORD，不要点 {}）'
+        : '数据库连接失败：用户名或密码错误，请检查 back/.env 中的 DB_USER 和 DB_PASSWORD',
       e.code
     );
   }
   if (e.code === 'ECONNREFUSED') {
     return new DatabaseError(
-      `数据库连接失败：无法连上 ${dbHost}:${dbPort}（库 ${dbName}）。本地请启动 MySQL；Railway 请确认已引用 MySQL 变量并重新部署`,
+      `数据库连接失败：无法连上 ${dbHost}:${dbPort}（库 ${dbName}）。本地请启动 MySQL；Railway 请确认已用纯文本填写 DB_PASSWORD 并重新部署`,
       e.code
     );
   }
