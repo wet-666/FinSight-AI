@@ -1,22 +1,40 @@
 //数据库连接与操作封装模块
+import dns from 'node:dns';
 import mysql, { RowDataPacket } from 'mysql2/promise';
 import dotenv from 'dotenv';
 
 dotenv.config();
 
-const pool = mysql.createPool({
-  host: process.env.DB_HOST || process.env.MYSQLHOST || 'localhost',
-  port: Number(process.env.DB_PORT || process.env.MYSQLPORT) || 3306,
-  user: process.env.DB_USER || process.env.MYSQLUSER || 'root',
-  password: process.env.DB_PASSWORD || process.env.MYSQLPASSWORD || '',
-  database: process.env.DB_NAME || process.env.MYSQLDATABASE || 'FinSightAI',
-  charset: 'utf8mb4',
-  // DECIMAL 以 number 返回，避免前端 toFixed / 后端字符串拼接出错
-  decimalNumbers: true,
-  waitForConnections: true,
-  connectionLimit: 10,
-  queueLimit: 0,
-});
+// Railway 内网是 IPv6；Node 默认先走 IPv4 会 ECONNREFUSED
+dns.setDefaultResultOrder('ipv6first');
+
+const dbHost = process.env.DB_HOST || process.env.MYSQLHOST || 'localhost';
+const dbPort = Number(process.env.DB_PORT || process.env.MYSQLPORT) || 3306;
+const dbUser = process.env.DB_USER || process.env.MYSQLUSER || 'root';
+const dbName = process.env.DB_NAME || process.env.MYSQLDATABASE || 'FinSightAI';
+const dbUrl = process.env.DATABASE_URL || process.env.MYSQL_URL || process.env.MYSQLURL;
+
+const pool = dbUrl
+  ? mysql.createPool({
+      uri: dbUrl,
+      charset: 'utf8mb4',
+      decimalNumbers: true,
+      waitForConnections: true,
+      connectionLimit: 10,
+      queueLimit: 0,
+    })
+  : mysql.createPool({
+      host: dbHost,
+      port: dbPort,
+      user: dbUser,
+      password: process.env.DB_PASSWORD || process.env.MYSQLPASSWORD || '',
+      database: dbName,
+      charset: 'utf8mb4',
+      decimalNumbers: true,
+      waitForConnections: true,
+      connectionLimit: 10,
+      queueLimit: 0,
+    });
 
 export default pool;
 
@@ -39,7 +57,10 @@ function toFriendlyDbError(err: unknown): DatabaseError {
     );
   }
   if (e.code === 'ECONNREFUSED') {
-    return new DatabaseError('数据库连接失败：MySQL 服务未启动，请先启动 MySQL', e.code);
+    return new DatabaseError(
+      `数据库连接失败：无法连上 ${dbHost}:${dbPort}（库 ${dbName}）。本地请启动 MySQL；Railway 请确认已引用 MySQL 变量并重新部署`,
+      e.code
+    );
   }
   if (e.code === 'ER_BAD_DB_ERROR') {
     return new DatabaseError(
