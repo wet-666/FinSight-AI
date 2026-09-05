@@ -1,18 +1,24 @@
 //数据库连接与操作封装模块
 import dns from 'node:dns';
 import mysql, { RowDataPacket } from 'mysql2/promise';
-import dotenv from 'dotenv';
-
-dotenv.config();
+import { readEnv } from './env';
 
 // Railway 内网是 IPv6；Node 默认先走 IPv4 会 ECONNREFUSED
 dns.setDefaultResultOrder('ipv6first');
 
-const dbHost = process.env.DB_HOST || process.env.MYSQLHOST || 'localhost';
-const dbPort = Number(process.env.DB_PORT || process.env.MYSQLPORT) || 3306;
-const dbUser = process.env.DB_USER || process.env.MYSQLUSER || 'root';
-const dbName = process.env.DB_NAME || process.env.MYSQLDATABASE || 'FinSightAI';
-const dbUrl = process.env.DATABASE_URL || process.env.MYSQL_URL || process.env.MYSQLURL;
+const dbHost = readEnv('DB_HOST', 'MYSQLHOST') || 'localhost';
+const dbPort = Number(readEnv('DB_PORT', 'MYSQLPORT')) || 3306;
+const dbUser = readEnv('DB_USER', 'MYSQLUSER') || 'root';
+const dbName = readEnv('DB_NAME', 'MYSQLDATABASE') || 'FinSightAI';
+const dbUrl = readEnv('DATABASE_URL', 'MYSQL_URL', 'MYSQLURL');
+
+export const dbTarget = {
+  host: dbHost,
+  port: dbPort,
+  database: dbName,
+  user: dbUser,
+  usingUrl: Boolean(dbUrl),
+};
 
 const pool = dbUrl
   ? mysql.createPool({

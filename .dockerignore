@@ -12,4 +12,5 @@ back/tests
 .env
 **/.env
 **/.env.*
+back/.env
 !back/.env.example

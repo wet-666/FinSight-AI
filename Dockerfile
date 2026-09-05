@@ -18,4 +18,4 @@ COPY shared ./shared
 
 WORKDIR /app/back
 EXPOSE 3300
-CMD ["npx", "tsx", "src/index.ts"]
+CMD ["node", "--import", "tsx", "src/index.ts"]

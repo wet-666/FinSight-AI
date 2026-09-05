@@ -1,10 +1,10 @@
 ﻿import express from 'express';
 import cors from 'cors';
-import dotenv from 'dotenv';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { config } from './config';
-import { testDatabaseConnection } from './config/database';
+import { isRailway } from './config/env';
+import { dbTarget, testDatabaseConnection } from './config/database';
 import { initRedis, testRedisConnection } from './config/redis';
 import authRoutes from './routes/authRoutes';
 import dashboardRoutes from './routes/dashboard';
@@ -25,8 +25,6 @@ import { probeMarketSource } from './services/marketService';
 import { probeLLM } from './agents/llm';
 import { ensureUsersSchema, STORAGE_ROOT } from './agents/ensureUsers';
 
-dotenv.config();
-
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
 
@@ -46,6 +44,13 @@ app.get('/api/health', async (_req, res) => {
     service: 'finsight-ai',
     version: '1.1',
     database: db,
+    dbTarget: {
+      host: dbTarget.host,
+      port: dbTarget.port,
+      database: dbTarget.database,
+      usingUrl: dbTarget.usingUrl,
+      railway: isRailway(),
+    },
     redis,
     market,
     llm,
@@ -78,6 +83,9 @@ app.use(
 
 app.listen(config.port, '0.0.0.0', async () => {
   console.log(`🚀 FinSight-AI 后端已启动: http://0.0.0.0:${config.port}`);
+  console.log(
+    `DB target: ${dbTarget.host}:${dbTarget.port}/${dbTarget.database} railway=${isRailway()} usingUrl=${dbTarget.usingUrl}`
+  );
   await initRedis();
   const db = await testDatabaseConnection();
   if (db.ok) {
