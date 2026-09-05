@@ -50,6 +50,9 @@ app.get('/api/health', async (_req, res) => {
       database: dbTarget.database,
       usingUrl: dbTarget.usingUrl,
       railway: isRailway(),
+      envKeys: Object.keys(process.env)
+        .filter((key) => /^(DB_|MYSQL|REDIS_ENABLED|RAILWAY_)/i.test(key))
+        .sort(),
     },
     redis,
     market,
